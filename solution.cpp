@@ -63,11 +63,20 @@ int cmp(const vector<int>& ring, int beg1, int end1, int beg2, int end2) {
     return 0; 
 }
 
-bool process_partition(int& beg, int& end, const vector<int>& ring) {
-    beg = 1;
-    end = 0;
+bool iterate_parts(const vector<int>& ring, int N, int K, vector<int>& begins, int cur_beg, int& min_beg, int& min_end) {
 
-    return false;
+    if (cur_beg == K)
+        return false;
+    
+
+
+    for (int b = advance(begins[cur_beg-1], N); b != begins[0]; b = advance(b, N)) {
+        begins[cur_beg] = b;
+
+    }
+
+
+    return true;
 }
 
 
@@ -78,8 +87,16 @@ void solve(const vector<int>& ring) {
         cout << max(ring, N) << endl;
     else {
         vector<int> begins(K, 0);
-        int beg = 0, end = 1;
-        iterate_parts(ring, N, K, begins, 0, min_1st);
+        int beg = 0, end = 0;
+
+        for (int b = 0; b < N; ++b) {
+            begins[0] = b;
+            iterate_parts(ring, N, K, begins, 1, beg, end);
+        }
+
+        for (;beg != end; beg=advance(beg, N))
+            cout << ring[beg];
+        cout << endl;
     }
 }
 
