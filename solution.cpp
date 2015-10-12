@@ -203,17 +203,35 @@ void set_2nd(const vector<int>& ring, int N, int K, vector<int>& begins, int& mi
 // 3 <= N && N <= 100000
 // 2 <= K && K <= N
 void solve(const vector<int>& ring, int N, int K) {
-    if (K == N)
-        cout << max(ring, N) << endl;
+    if (K == N) {
+        int m = ring[0];
+        if (m < 9) {
+            for (int i = 0; i < N; ++i) {
+                if (m < ring[i]) {
+                    m = ring[i];
+                    if (m == 9)
+                        break;
+                } 
+            }
+        }
+        cout << m << endl;
+    }
     else {
         vector<int> begins(K, 0);
         int beg = 0, end = 0;
 
-        for (int i = 0; i < N; ++i) {
+	int step = 1;
+
+        for (int i = 0; i < N; i+=step) {
             int b = i;
 
             begins[0] = b;
             set_2nd(ring, N, K, begins, beg, end);
+
+            if (beg != end) {
+                int size_1st = size(beg, end, N);
+                step = size_1st / 2;
+            }
         }
 
 
@@ -255,4 +273,3 @@ int main(int argc, const char* argv[]) {
 
     return 0;
 }
-
