@@ -38,10 +38,10 @@ int max(const vector<int>& ring, int size) {
 
 
 int cmp(const vector<int>& ring, int N, int beg1, int end1, int beg2, int end2) {
-    while (beg1 != end1 && 0 == ring[beg1])
-        beg1 = advance(beg1, N);
-    while (beg2 != end2 && 0 == ring[beg2])
-        beg2 = advance(beg2, N);
+//    while (beg1 != end1 && 0 == ring[beg1])
+//        beg1 = advance(beg1, N);
+//    while (beg2 != end2 && 0 == ring[beg2])
+//        beg2 = advance(beg2, N);
 
     int size1 = size(beg1, end1, N);
     int size2 = size(beg2, end2, N);
@@ -74,7 +74,7 @@ int try_bigger(const vector<int>& ring, int N, int K, vector<int>& begins, int c
 
         int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
 
-        if (0 > res) 
+        if (0 >= res) 
             break;
 
         b = try_b;
@@ -122,6 +122,7 @@ bool process_next(const vector<int>& ring, int N, int K, vector<int>& begins, in
 
     int size_last = size(begins[cur_beg-1], begins[0], N);
     int pos_available = size_last ? size_last - 1 : 0;
+/*
     if (pos_available < (K - cur_beg)) {
         int beg = cur_beg-1;
         int res = cmp(ring, N, begins[0], begins[1], begins[beg], begins[0]);
@@ -134,14 +135,28 @@ bool process_next(const vector<int>& ring, int N, int K, vector<int>& begins, in
         
         return false;
     }
-
+*/
 
     int step = size_1st > pos_available ? pos_available : size_1st;
     int b = advance(begins[cur_beg-1], N, step);
+    begins[cur_beg] = b;
+
+    if (pos_available < (K - cur_beg)) {
+        int beg = cur_beg;
+        int res = cmp(ring, N, begins[0], begins[1], begins[beg], begins[0]);
+
+        if (-1 != res) {
+            min_beg = begins[0];
+            min_end = begins[1];
+            return true;
+        }
+        
+        return false;
+    }
 
     int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], b);
 
-    if (0 <= res) {
+    if (0 < res) {
         // 1st bigger
 
         b = try_bigger(ring, N, K, begins, cur_beg, b);
@@ -162,8 +177,18 @@ bool process_next(const vector<int>& ring, int N, int K, vector<int>& begins, in
 
 void set_2nd(const vector<int>& ring, int N, int K, vector<int>& begins, int& min_beg, int& min_end) {
     int size_1st = 0;
-   
-    for (int b = advance(begins[0], N); b != begins[0]; b = advance(b, N)) { 
+
+    int step = N/K;
+/*
+    if (min_beg != min_end) {
+        int tmp = min_beg;
+        while(tmp != min_end && 0 == ring[tmp])
+           tmp = advance(tmp, N);
+        step = size(tmp, min_end, N) / 2;
+        step = step ? step : 1;
+    }
+*/   
+    for (int b = advance(begins[0], N, step); b != begins[0]; b = advance(b, N)) { 
         ++size_1st;
 
         begins[1] = b;
@@ -199,6 +224,18 @@ void set_2nd(const vector<int>& ring, int N, int K, vector<int>& begins, int& mi
 
 
 
+struct idx_less {
+    const vector<int>& ring_;
+    idx_less(const vector<int>& ring) :
+        ring_(ring)
+    {}
+
+    bool operator() (int i1, int i2) {
+        return ring_[i1] < ring_[i2];
+    }
+};
+
+
 
 // 3 <= N && N <= 100000
 // 2 <= K && K <= N
@@ -217,21 +254,18 @@ void solve(const vector<int>& ring, int N, int K) {
         cout << m << endl;
     }
     else {
+        vector<int> indices(N, 0);
+        sort(indices.begin(), indices.end(), idx_less(ring));
+
         vector<int> begins(K, 0);
         int beg = 0, end = 0;
 
-	int step = 1;
-
-        for (int i = 0; i < N; i+=step) {
+        for (int i = 0; i < N; i+=1) {
             int b = i;
+            //int b = indices[i];
 
             begins[0] = b;
             set_2nd(ring, N, K, begins, beg, end);
-
-            if (beg != end) {
-                int size_1st = size(beg, end, N);
-                step = size_1st / 2;
-            }
         }
 
 
