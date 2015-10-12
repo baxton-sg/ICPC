@@ -67,6 +67,40 @@ int cmp(const vector<int>& ring, int N, int beg1, int end1, int beg2, int end2) 
 }
 
 
+int try_bigger(const vector<int>& ring, int N, int K, vector<int>& begins, int cur_beg, int b) {
+    int try_b = advance(b, N);
+
+    while (try_b != begins[0]) {
+
+        int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
+
+        if (0 > res) 
+            break;
+
+        b = try_b;
+        try_b = advance(try_b, N);
+    }
+
+    return b;
+}
+
+
+int try_smaller(const vector<int>& ring, int N, int K, vector<int>& begins, int cur_beg, int b) {
+    int try_b = advance(b, N, -1);
+
+    while (try_b != begins[cur_beg-1]) {
+
+        int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
+    
+        if (0 <= res) 
+            break;
+
+        try_b = advance(try_b, N, -1);
+    }
+
+    return try_b;
+}
+
 
 
 bool process_next(const vector<int>& ring, int N, int K, vector<int>& begins, int cur_beg, int size_1st, int& min_beg, int& min_end) {
@@ -86,60 +120,41 @@ bool process_next(const vector<int>& ring, int N, int K, vector<int>& begins, in
     }
 
 
-    int pos_available = size(begins[cur_beg-1], begins[0], N) - 1;
+    int size_last = size(begins[cur_beg-1], begins[0], N);
+    int pos_available = size_last ? size_last - 1 : 0;
     if (pos_available < (K - cur_beg)) {
-        min_beg = begins[0];
-        min_end = begins[1];
-        return true;
+        int beg = cur_beg-1;
+        int res = cmp(ring, N, begins[0], begins[1], begins[beg], begins[0]);
+
+        if (-1 != res) {
+            min_beg = begins[0];
+            min_end = begins[1];
+            return true;
+        }
+        
+        return false;
     }
 
 
     int step = size_1st > pos_available ? pos_available : size_1st;
     int b = advance(begins[cur_beg-1], N, step);
-    begins[cur_beg] = b;
-
 
     int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], b);
 
-    if (res == 0) {
-        return process_next(ring, N, K, begins, cur_beg+1, size_1st, min_beg, min_end);
-    }
-    else if (0 < res) {
+    if (0 <= res) {
         // 1st bigger
 
-        int try_b = advance(b, N);
-        res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
-        while(0 < res && try_b != begins[0]) {
-            try_b = advance(try_b, N);
-            res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
-        }
-
-        if (0 <= res && try_b == begins[0]) {
-            // all zeros or the full rest is less than 1st
-            min_beg = begins[0];
-            min_end = begins[1];
-            return true;
-        }
-        else if (0 == res) {
-            begins[cur_beg] = try_b;   // ok
-        }
-        else {
-            ;   // current is bigger - cannot make it bigger, leave as is
-        }
+        b = try_bigger(ring, N, K, begins, cur_beg, b);
     }
-    else {
-        int try_b = advance(b, N, -1);
-        res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
-        while(0 > res && try_b != begins[cur_beg-1]) { 
-            try_b = advance(try_b, N, -1);
-            res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
-        }
+    else if (0 > res) {
+        // 1st smaller
 
-        if (try_b == begins[cur_beg-1])
-            return false;   // I cannot make it smaller
-
-        begins[cur_beg] = try_b;
+        b = try_smaller(ring, N, K, begins, cur_beg, b);
+        if (b == begins[cur_beg-1])
+            return false;
     }
+
+    begins[cur_beg] = b;
 
     return process_next(ring, N, K, begins, cur_beg+1, size_1st, min_beg, min_end);
 }
@@ -156,7 +171,7 @@ void set_2nd(const vector<int>& ring, int N, int K, vector<int>& begins, int& mi
         if (K == 2) {
             if (min_beg != min_end) {
                 int res = cmp(ring, N, begins[0], begins[1], min_beg, min_end);
-                if (1 == res)
+                if (-1 != res)
                     return;
             }
        
