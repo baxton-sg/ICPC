@@ -12,8 +12,13 @@ using namespace std;
 
 
 inline
-int advance(int it, int size) {
-    return (it + 1) % size;
+int advance(int it, int size, int step=1) {
+    if (0 > step) {
+        int s = it - (-step) % size;
+        return s >= 0 ? s : size + s;
+    }
+    
+    return (it + step) % size;
 }
 
 inline
@@ -61,49 +66,120 @@ int cmp(const vector<int>& ring, int N, int beg1, int end1, int beg2, int end2) 
     return 0; 
 }
 
-bool iterate_parts(const vector<int>& ring, int N, int K, vector<int>& begins, int cur_beg, int& min_beg, int& min_end) {
 
-    for (int b = advance(begins[cur_beg-1], N); b != begins[0]; b = advance(b, N)) {
 
-        begins[cur_beg] = b;
 
-        if (1 == cur_beg) {
-            if (min_beg != min_end) {
-                // new 1st partition, check if it's smaller than one I already have
-                int res = cmp(ring, N, min_beg, min_end, begins[0], begins[1]);
-                if (1 != res) 
-                    // I do not need to continue bcoz 1st partition will be only getting bigger
-                    return false;
-            }
+bool process_next(const vector<int>& ring, int N, int K, vector<int>& begins, int cur_beg, int size_1st, int& min_beg, int& min_end) {
+
+    if (K == cur_beg) {
+        // last one partition
+
+        int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], begins[0]);
+
+        if (-1 != res) {
+            min_beg = begins[0];
+            min_end = begins[1]; 
+            return true;
         }
-        else {
-            // check if the partition is smaller than or equal to the 1st one
-            int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], begins[cur_beg]);
-            if (-1 == res)
-                // I do not need to continue bcoz the current partition will be only getting bigger
-                return false;
-        }
-
-        if ((K-1) == cur_beg) {
-            int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg], begins[0]);
-            if (-1 != res) {
-                // last partition - I'm here and this means I found one of solutions
-                min_beg = begins[0];
-                min_end = begins[1];
-                return true; 
-            }
-        }
-        else {
-            int pos_available = size(begins[cur_beg], begins[0], N) - 1;
-            if (pos_available < (K - cur_beg - 1))
-                return false; 
-
-            iterate_parts(ring, N, K, begins, cur_beg+1, min_beg, min_end);
-        }
+        
+        return false;
     }
 
 
-    return false;
+    int pos_available = size(begins[cur_beg-1], begins[0], N) - 1;
+    if (pos_available < (K - cur_beg)) {
+        min_beg = begins[0];
+        min_end = begins[1];
+        return true;
+    }
+
+
+    int step = size_1st > pos_available ? pos_available : size_1st;
+    int b = advance(begins[cur_beg-1], N, step);
+    begins[cur_beg] = b;
+
+
+    int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], b);
+
+    if (res == 0) {
+        return process_next(ring, N, K, begins, cur_beg+1, size_1st, min_beg, min_end);
+    }
+    else if (0 < res) {
+        // 1st bigger
+
+        int try_b = advance(b, N);
+        res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
+        while(0 < res && try_b != begins[0]) {
+            try_b = advance(try_b, N);
+            res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
+        }
+
+        if (0 <= res && try_b == begins[0]) {
+            // all zeros or the full rest is less than 1st
+            min_beg = begins[0];
+            min_end = begins[1];
+            return true;
+        }
+        else if (0 == res) {
+            begins[cur_beg] = try_b;   // ok
+        }
+        else {
+            ;   // current is bigger - cannot make it bigger, leave as is
+        }
+    }
+    else {
+        int try_b = advance(b, N, -1);
+        res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
+        while(0 > res && try_b != begins[cur_beg-1]) { 
+            try_b = advance(try_b, N, -1);
+            res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
+        }
+
+        if (try_b == begins[cur_beg-1])
+            return false;   // I cannot make it smaller
+
+        begins[cur_beg] = try_b;
+    }
+
+    return process_next(ring, N, K, begins, cur_beg+1, size_1st, min_beg, min_end);
+}
+
+
+void set_2nd(const vector<int>& ring, int N, int K, vector<int>& begins, int& min_beg, int& min_end) {
+    int size_1st = 0;
+   
+    for (int b = advance(begins[0], N); b != begins[0]; b = advance(b, N)) { 
+        ++size_1st;
+
+        begins[1] = b;
+
+        if (K == 2) {
+            if (min_beg != min_end) {
+                int res = cmp(ring, N, begins[0], begins[1], min_beg, min_end);
+                if (1 == res)
+                    return;
+            }
+       
+            int res = cmp(ring, N, begins[1], begins[0], begins[0], begins[1]); 
+            if (1 == res)
+                continue;
+
+            min_beg = begins[0];
+            min_end = begins[1];
+            return;
+        }
+        else {
+            if (min_beg != min_end) {
+                int res = cmp(ring, N, min_beg, min_end, begins[0], begins[1]);
+                if (1 != res)
+                    return;
+            }
+
+            bool result = process_next(ring, N, K, begins, 2, size_1st, min_beg, min_end);
+            if (result)
+                return;
+        }
+    }
 }
 
 
@@ -121,11 +197,8 @@ void solve(const vector<int>& ring, int N, int K) {
         for (int i = 0; i < N; ++i) {
             int b = i;
 
-            if (b && ring[b-1] == 0)
-                continue;
-
             begins[0] = b;
-            iterate_parts(ring, N, K, begins, 1, beg, end);
+            set_2nd(ring, N, K, begins, beg, end);
         }
 
 
@@ -134,9 +207,14 @@ void solve(const vector<int>& ring, int N, int K) {
         else {
             while (beg != end && 0 == ring[beg])
                 beg = advance(beg, N);
-            for (;beg != end; beg=advance(beg, N))
-                cout << ring[beg];
-            cout << endl;
+
+            if (beg == end)
+                cout << "0" << endl;
+            else {
+                for (;beg != end; beg=advance(beg, N))
+                    cout << ring[beg];
+                cout << endl;
+            }
         }
     }
 }
