@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <utility>
 
 
 using namespace std;
@@ -13,10 +14,10 @@ using namespace std;
 
 inline
 int advance(int it, int size, int step=1) {
-//    if (0 > step) {
-//        int s = it - (-step) % size;
-//        return s >= 0 ? s : size + s;
-//    }
+    if (0 > step) {
+        int s = it - (-step) % size;
+        return s >= 0 ? s : size + s;
+    }
     
     return (it + step) % size;
 }
@@ -33,18 +34,8 @@ int size(int beg, int end, int N) {
 
 int cmp(const vector<int>& ring, int N, int beg1, int end1, int beg2, int end2) {
 
-    int size1 = size(beg1, end1, N);
-    int size2 = size(beg2, end2, N);
-
-    if (size1 > size2) {
-        return 1;
-    }
-    else if (size2 > size1) {
-        return -1;
-    }
-
-    // sizes are equal       
-    while (beg1 != end1 && beg2 != end2) {
+    // sizes are equal !!!      
+    while (beg1 != end1) {
         if (ring[beg1] > ring[beg2])
             return 1;
         else if (ring[beg2] > ring[beg1])
@@ -57,145 +48,44 @@ int cmp(const vector<int>& ring, int N, int beg1, int end1, int beg2, int end2) 
 }
 
 
-int try_bigger(const vector<int>& ring, int N, int K, vector<int>& begins, int cur_beg, int b) {
-    int try_b = advance(b, N);
 
-    while (try_b != begins[0]) {
+struct num_less {
+    const vector<int>& ring_;
+    int N_;
+    num_less(const vector<int>& ring, int N) :
+        ring_(ring),
+        N_(N)
+    {}
 
-        int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
 
-        if (0 >= res) 
-            break;
-
-        b = try_b;
-        try_b = advance(try_b, N);
+    bool operator() (const pair<int,int>& p1, const pair<int,int>& p2) {
+        return 0 > cmp(ring_, N_, p1.first, p1.second, p2.first, p2.second);
     }
-
-    return b;
-}
-
-
-int try_smaller(const vector<int>& ring, int N, int K, vector<int>& begins, int cur_beg, int b) {
-    int try_b = advance(b, N, -1);
-
-    while (try_b != begins[cur_beg-1]) {
-
-        int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], try_b);
-    
-        if (0 <= res) 
-            break;
-
-        try_b = advance(try_b, N, -1);
-    }
-
-    return try_b;
-}
+};
 
 
 
-bool process_next(const vector<int>& ring, int N, int K, vector<int>& begins, int cur_beg, int size_1st, int& min_beg, int& min_end) {
+bool get_part(const vector<int>& ring, int N, int b1, int e1, int start, int finish, int part_size, int& beg, int& end) {
+    // sanity check
+    if (part_size > size(start, finish, N))
+        return false;
 
-    if (K == cur_beg) {
-        // last one partition
+    int stop = advance(finish, N, -part_size + 1);
 
-        int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], begins[0]);
-
-        if (-1 != res) {
-            min_beg = begins[0];
-            min_end = begins[1]; 
+    int min_beg = start;
+    int min_end = -1;
+    for (;min_beg != stop; min_beg = advance(min_beg, N)) { 
+        min_end = advance(min_beg, N, part_size);
+        int res = cmp(ring, N, b1, e1, min_beg, min_end);
+        if (0 <= res) {
+            beg = min_beg;
+            end = min_end;
             return true;
         }
-        
-        return false;
     }
 
-
-    int size_last = size(begins[cur_beg-1], begins[0], N);
-    int pos_available = size_last ? size_last - 1 : 0;
-
-    if (pos_available < (K - cur_beg)) {
-        int beg = cur_beg-1;
-        int res = cmp(ring, N, begins[0], begins[1], begins[beg], begins[0]);
-
-        if (-1 != res) {
-            min_beg = begins[0];
-            min_end = begins[1];
-            return true;
-        }
-        
-        return false;
-    }
-
-
-    int step = size_1st > pos_available ? pos_available : size_1st;
-    int b = advance(begins[cur_beg-1], N, step);
-    begins[cur_beg] = b;
-
-    int res = cmp(ring, N, begins[0], begins[1], begins[cur_beg-1], b);
-
-    if (0 < res) {
-        // 1st bigger
-
-        b = try_bigger(ring, N, K, begins, cur_beg, b);
-    }
-    else if (0 > res) {
-        // 1st smaller
-
-
-        b = try_smaller(ring, N, K, begins, cur_beg, b);
-        if (b == begins[cur_beg-1])
-            return false;
-    }
-
-    begins[cur_beg] = b;
-
-    return process_next(ring, N, K, begins, cur_beg+1, size_1st, min_beg, min_end);
+    return false;
 }
-
-
-void set_2nd(const vector<int>& ring, int N, int K, vector<int>& begins, int& min_beg, int& min_end) {
-    int size_1st = 0;
-
-    int step = (N / K);
-
-   
-    for (int b = advance(begins[0], N, step); b != begins[0]; b = advance(b, N)) { 
-        size_1st += step;
-
-        begins[1] = b;
-
-        if (K == 2) {
-            if (min_beg != min_end) {
-                int res = cmp(ring, N, begins[0], begins[1], min_beg, min_end);
-                if (-1 != res)
-                    return;
-            }
-       
-            int res = cmp(ring, N, begins[1], begins[0], begins[0], begins[1]); 
-            if (1 == res)
-                continue;
-
-            min_beg = begins[0];
-            min_end = begins[1];
-            return;
-        }
-        else {
-            if (min_beg != min_end) {
-                int res = cmp(ring, N, min_beg, min_end, begins[0], begins[1]);
-                if (1 != res)
-                    return;
-            }
-
-            bool result = process_next(ring, N, K, begins, 2, size_1st, min_beg, min_end);
-            if (result)
-                return;
-        }
-    }
-}
-
-
-
-
 
 
 // 3 <= N && N <= 100000
@@ -216,31 +106,52 @@ void solve(const vector<int>& ring, int N, int K) {
     }
     else {
 
-        vector<int> begins(K, 0);
-        int beg = 0, end = 0;
+        int part_size = (N % K) ? (N / K) + 1 : (N / K);
+        int part_size_num = 0;
 
-        for (int i = 0; i < N; ++i) {
-            int b = i;
+        int tmp_N = N;
+        int tmp_K = K;
+        while (tmp_N) {
+            int s = (tmp_N % tmp_K) ? (tmp_N / tmp_K) + 1 : (tmp_N / tmp_K);
+            if (s == part_size)
+                part_size_num += 1;
 
-            begins[0] = b;
-            set_2nd(ring, N, K, begins, beg, end);
+            tmp_N -= s;
+            tmp_K -= 1;
         }
 
+        int min_beg = 0, min_end = 0;
+        int res;
 
-        if (beg == end)
-            cout << "0" << endl;
-        else {
-            while (beg != end && 0 == ring[beg])
-                beg = advance(beg, N);
+        for (int b = 0; b < N; ++b) {
+            int e = advance(b, N, part_size);
 
-            if (beg == end)
-                cout << "0" << endl;
-            else {
-                for (;beg != end; beg=advance(beg, N))
-                    cout << ring[beg];
-                cout << endl;
+            if (min_beg != min_end) {
+                res = cmp(ring, N, min_beg, min_end, b, e);
+                if (0 >= res)
+                    continue;
+            }
+
+            int tmp_num = part_size_num - 1;
+            int beg = e, end = b;
+            while(tmp_num) {
+                if (!get_part(ring, N, b, e, beg, end, part_size, beg, end))
+                    break;
+                --tmp_num;
+                beg = end;
+                end = b;
+            }
+
+            if (!tmp_num) {
+                min_beg = b;
+                min_end = e;
             }
         }
+
+
+        for (;min_beg != min_end; min_beg=advance(min_beg, N))
+            cout << ring[min_beg];
+        cout << endl;
     }
 }
 
