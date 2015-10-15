@@ -118,12 +118,19 @@ int cmp_impl(const INT* ring, int N, int beg1, int end1, int beg2, int end2/*, i
 
 struct idx_less {
     const INT* ring;
-    idx_less(const INT* v) :
-        ring(v)
+    int size;
+    int N;
+    idx_less(const INT* v, int v_size, int part_size) :
+        ring(v),
+        size(part_size),
+        N(v_size)
     {}
 
     bool operator() (int i1, int i2) {
-        return ring[i1] < ring[i2];
+        int e1 = (i1 + size) % N;
+        int e2 = (i2 + size) % N;
+        int res = cmp_impl(ring, N, i1, e1, i2, e2);
+        return 0 > res;
     }
 };
 
@@ -146,11 +153,6 @@ void solve(const INT* ring, int N, int K) {
         cout << m << endl;
     }
     else {
-        vector<int> indices;
-        indices.reserve(N);
-        for (int i = 0; i < N; ++i)
-            indices.push_back(i);
-        sort(indices.begin(), indices.end(), idx_less(ring));
 
         int part_size = N / K;
         part_size = (N % K) ?  part_size + 1 : part_size;
@@ -168,11 +170,19 @@ void solve(const INT* ring, int N, int K) {
             part_size_small += (s != part_size);
         }
 
+
+        vector<int> indices;
+        indices.reserve(N);
+        for (int i = 0; i < N; ++i)
+            indices.push_back(i);
+        sort(indices.begin(), indices.end(), idx_less(ring, N, part_size));
+
+
         int min_beg = 0, min_end = 0;
 
         for (int i = 0; i < N; ++i) {
             int b = indices[i];
-                b = i;
+//                b = i;
             int  e = (b + part_size) % N; // increment(b, N, part_size);
 
 //timer tm1("main loop");
@@ -223,10 +233,10 @@ void solve(const INT* ring, int N, int K) {
                 
             // last one partition
             if (0 == full_parts) {
-cout << "found: ";
-for (int z = b; z != e; z = (z + 1) % N)
-    cout << ring[z];
-cout << endl;
+//cout << "found: ";
+//for (int z = b; z != e; z = (z + 1) % N)
+//    cout << ring[z];
+//cout << endl;
                 min_beg = b;
                 min_end = e; 
             }
