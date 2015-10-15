@@ -165,8 +165,7 @@ void solve(const INT* ring, int N, int K) {
             tmp_k -= 1;
             tmp_n -= s;
             part_size_num += (s == part_size);
-            if (s != part_size)
-                part_size_small = s;
+            part_size_small += (s != part_size);
         }
 
         int min_beg = 0, min_end = 0;
@@ -195,7 +194,7 @@ void solve(const INT* ring, int N, int K) {
 
             int cur_beg = 2;
             int full_parts = part_size_num - 1;
-            int full_parts_small = 1;
+            int full_parts_small = part_size_small;
 
             int tmp_b = e;
             int tmp_e = (tmp_b + part_size) % N;
