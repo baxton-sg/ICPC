@@ -2,10 +2,11 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include <ctime>
 
-//#include <set>
+#include <map>
 //#include <unordered_set>
-//#include <algorithm>
+#include <algorithm>
 //#include <cstring>
 
 
@@ -17,10 +18,53 @@ typedef vector<INT> storage;
 
 
 
+/*
+struct time_data {
+    int cnt;
+    double clocks;
+    time_data() :
+        cnt(0),
+        clocks(0.)
+    {}
+};
+
+struct timer {
+    static map<string, time_data> timers;
+
+    string name;
+    clock_t start;
+    
+    timer(const char* timer_name) :
+        name(timer_name),
+        start(clock())
+    {}
+
+
+    ~timer() {
+        time_data& td = timers[name];
+        td.cnt += 1;
+        td.clocks += double(clock() - start);
+    }
+    
+    static ostream& print(ostream& os) {
+        for (map<string, time_data>::const_iterator it = timers.begin(); it != timers.end(); ++it) {
+            const string& name = it->first;
+            const time_data& td = it->second;
+
+            os << name << ": total sec " << (td.clocks / CLOCKS_PER_SEC) << " cnt " << td.cnt << " (avr: " << ((td.clocks / td.cnt) / CLOCKS_PER_SEC) << ")" << endl;
+        }
+        return os;
+    }    
+};
+map<string, time_data> timer::timers; 
+*/
 
 
 
 int cmp_impl(const INT* ring, int N, int beg1, int end1, int beg2, int end2/*, int size*/) {
+
+//    timer tm("cmp");
+
     /*
     int res;
     int size4 = size / 4;
@@ -72,6 +116,18 @@ int cmp_impl(const INT* ring, int N, int beg1, int end1, int beg2, int end2/*, i
 
 
 
+struct idx_less {
+    const INT* ring;
+    idx_less(const INT* v) :
+        ring(v)
+    {}
+
+    bool operator() (int i1, int i2) {
+        return ring[i1] < ring[i2];
+    }
+};
+
+
 // 3 <= N && N <= 100000
 // 2 <= K && K <= N
 template<int cmp(const INT*, int, int, int, int, int/*, int*/)>
@@ -90,6 +146,11 @@ void solve(const INT* ring, int N, int K) {
         cout << m << endl;
     }
     else {
+        vector<int> indices;
+        indices.reserve(N);
+        for (int i = 0; i < N; ++i)
+            indices.push_back(i);
+        sort(indices.begin(), indices.end(), idx_less(ring));
 
         int part_size = N / K;
         part_size = (N % K) ?  part_size + 1 : part_size;
@@ -107,8 +168,12 @@ void solve(const INT* ring, int N, int K) {
 
         int min_beg = 0, min_end = 0;
 
-        for (int b = 0; b < N; ++b) {
+        for (int i = 0; i < N; ++i) {
+            int b = indices[i];
+//                b = i;
             int  e = (b + part_size) % N; // increment(b, N, part_size);
+
+//timer tm1("main loop");
 
             if (min_beg != min_end) {
                 if (ring[min_beg] < ring[b])
@@ -134,16 +199,24 @@ void solve(const INT* ring, int N, int K) {
 
 
             while ((space + part_size) <= N && full_parts) {
-                int res = cmp(ring, N, b, e, tmp_b, tmp_e);
+//timer tm2("nested loop");
 
-                if (0 <= res) {
-                    full_parts -= 1;
-                    space += part_size;
-                    tmp_b = tmp_e;
-                }
-                else {
+                if (ring[b] < ring[tmp_b]) {
                     space += 1;
                     tmp_b = (tmp_b + 1) % N;
+                }
+                else {
+                    int res = cmp(ring, N, b, e, tmp_b, tmp_e);
+
+                    if (0 <= res) {
+                        full_parts -= 1;
+                        space += part_size;
+                        tmp_b = tmp_e;
+                    }
+                    else {
+                        space += 1;
+                        tmp_b = (tmp_b + 1) % N;
+                    }
                 }
                 tmp_e = (tmp_b + part_size) % N;
 
@@ -165,6 +238,7 @@ void solve(const INT* ring, int N, int K) {
         cout << ss.str() << endl;
     }
 
+//timer::print(cout);
 }
 
 
