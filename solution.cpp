@@ -18,7 +18,7 @@ typedef vector<INT> storage;
 
 
 
-/*
+
 struct time_data {
     int cnt;
     double clocks;
@@ -57,13 +57,13 @@ struct timer {
     }    
 };
 map<string, time_data> timer::timers; 
-*/
+
 
 
 
 int cmp_impl(const INT* ring, int N, int beg1, int end1, int beg2, int end2/*, int size*/) {
 
-//    timer tm("cmp");
+    timer tm("cmp");
 
     /*
     int res;
@@ -155,6 +155,7 @@ void solve(const INT* ring, int N, int K) {
         int part_size = N / K;
         part_size = (N % K) ?  part_size + 1 : part_size;
         int part_size_num = 0;
+        int part_size_small = 0;
         int tmp_n = N;
         int tmp_k = K;
         while (tmp_k) {
@@ -164,6 +165,8 @@ void solve(const INT* ring, int N, int K) {
             tmp_k -= 1;
             tmp_n -= s;
             part_size_num += (s == part_size);
+            if (s != part_size)
+                part_size_small = s;
         }
 
         int min_beg = 0, min_end = 0;
@@ -173,7 +176,7 @@ void solve(const INT* ring, int N, int K) {
 //                b = i;
             int  e = (b + part_size) % N; // increment(b, N, part_size);
 
-//timer tm1("main loop");
+timer tm1("main loop");
 
             if (min_beg != min_end) {
                 if (ring[min_beg] < ring[b])
@@ -192,6 +195,7 @@ void solve(const INT* ring, int N, int K) {
 
             int cur_beg = 2;
             int full_parts = part_size_num - 1;
+            int full_parts_small = 1;
 
             int tmp_b = e;
             int tmp_e = (tmp_b + part_size) % N;
@@ -199,24 +203,21 @@ void solve(const INT* ring, int N, int K) {
 
 
             while ((space + part_size) <= N && full_parts) {
-//timer tm2("nested loop");
+timer tm2("nested loop");
 
-                if (ring[b] < ring[tmp_b]) {
-                    space += 1;
-                    tmp_b = (tmp_b + 1) % N;
+                int res = cmp(ring, N, b, e, tmp_b, tmp_e);
+
+                if (0 <= res) {
+                    full_parts -= 1;
+                    space += part_size;
+                    tmp_b = tmp_e;
                 }
                 else {
-                    int res = cmp(ring, N, b, e, tmp_b, tmp_e);
-
-                    if (0 <= res) {
-                        full_parts -= 1;
-                        space += part_size;
-                        tmp_b = tmp_e;
-                    }
-                    else {
-                        space += 1;
-                        tmp_b = (tmp_b + 1) % N;
-                    }
+                    if (!full_parts_small) 
+                        break;
+                    space += part_size_small;
+                    full_parts_small -= 1;
+                    tmp_b = (tmp_b + part_size_small) % N;
                 }
                 tmp_e = (tmp_b + part_size) % N;
 
@@ -238,7 +239,7 @@ void solve(const INT* ring, int N, int K) {
         cout << ss.str() << endl;
     }
 
-//timer::print(cout);
+timer::print(cout);
 }
 
 
