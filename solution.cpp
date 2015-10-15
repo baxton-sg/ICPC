@@ -1,11 +1,12 @@
 
 #include <iostream>
 #include <vector>
-#include <set>
-//#include <unordered_set>
-#include <algorithm>
+#include <sstream>
 
-#include <cstring>
+//#include <set>
+//#include <unordered_set>
+//#include <algorithm>
+//#include <cstring>
 
 
 using namespace std;
@@ -19,7 +20,7 @@ typedef vector<INT> storage;
 
 
 
-int cmp_impl(const INT* ring, int N, int beg1, int end1, int beg2, int end2, int size) {
+int cmp_impl(const INT* ring, int N, int beg1, int end1, int beg2, int end2/*, int size*/) {
     /*
     int res;
     int size4 = size / 4;
@@ -73,7 +74,7 @@ int cmp_impl(const INT* ring, int N, int beg1, int end1, int beg2, int end2, int
 
 // 3 <= N && N <= 100000
 // 2 <= K && K <= N
-template<int cmp(const INT*, int, int, int, int, int, int)>
+template<int cmp(const INT*, int, int, int, int, int/*, int*/)>
 void solve(const INT* ring, int N, int K) {
     if (K == N) {
         int m = ring[0];
@@ -97,16 +98,14 @@ void solve(const INT* ring, int N, int K) {
         int tmp_k = K;
         while (tmp_k) {
             int s = tmp_n % tmp_k ? 
-                    tmp_n / tmp_k :
-                    tmp_n / tmp_k + 1;
+                    tmp_n / tmp_k + 1:
+                    tmp_n / tmp_k;
             tmp_k -= 1;
             tmp_n -= s;
             part_size_num += (s == part_size);
         }
 
-//        vector<int> begins(K, 0);
         int min_beg = 0, min_end = 0;
-        int tmp_psn = part_size_num;
 
         for (int b = 0; b < N; ++b) {
             int  e = (b + part_size) % N; // increment(b, N, part_size);
@@ -115,7 +114,7 @@ void solve(const INT* ring, int N, int K) {
                 if (ring[min_beg] < ring[b])
                     continue;
                 else {
-                    int res = cmp(ring, N, min_beg, min_end, b, e, part_size);
+                    int res = cmp(ring, N, min_beg, min_end, b, e/*, part_size*/);
                     if (0 >= res)
                         continue;
                 }
@@ -127,78 +126,43 @@ void solve(const INT* ring, int N, int K) {
 
 
             int cur_beg = 2;
-            int prev = e;
             int full_parts = part_size_num - 1;
 
-//            process_next(ring, N, K, begins, 2, part_size, beg, end);
-            while(K > cur_beg) {
-        
-                //int size_last = size(begins[cur_beg-1], begins[0], N);
+            int tmp_b = e;
+            int tmp_e = (tmp_b + part_size) % N;
+            int space = part_size;
 
-                int size_last = b - prev;
-                size_last += N * ((unsigned int)size_last >> (8 * sizeof(int) - 1));
-                if (size_last <= part_size) {
-                    min_beg = b;
-                    min_end = e;
-                    break;
-                }        
 
-                int tmp_b = prev;
-                int tmp_e = (tmp_b + part_size) % N; //increment(b, N, part_size);
-        
-                int res = cmp(ring, N, b, e, tmp_b, tmp_e, part_size);
-        
-                //if (0 > res) {
-                    // 1st smaller
-        
-                    //e = decrement(e, N, 1);
-                    //--tmp_e;
-                    int flag = ((unsigned int)res >> (8 * sizeof(int) - 1));
-                    tmp_e -= flag;
-                    tmp_e = tmp_e + N * ((unsigned int)tmp_e >> (8 * sizeof(int) - 1));
-                    full_parts -= 1 - flag;
+            while ((space + part_size) <= N && full_parts) {
+                int res = cmp(ring, N, b, e, tmp_b, tmp_e);
 
-                
- //                   if (tmp_e == tmp_b)
- //                       break;
-                //}
-        
-                prev = tmp_e;
-        
-                cur_beg += 1;
-                
-                if ((K - cur_beg + 1) < full_parts)
-                    break;
+                if (0 <= res) {
+                    full_parts -= 1;
+                    space += part_size;
+                    tmp_b = tmp_e;
+                }
+                else {
+                    space += 1;
+                    tmp_b = (tmp_b + 1) % N;
+                }
+                tmp_e = (tmp_b + part_size) % N;
+
             }   // while true
                 
             // last one partition
-            if (K == cur_beg) {
-                //int size_last = size(begins[cur_beg-1], begins[0], N);
-                int size_last = b - prev;
-                size_last += N * ((unsigned int)size_last >> (8 * sizeof(int) - 1));
-                if (size_last < part_size) {
-                    min_beg = b;
-                    min_end = e; 
-                }
-                else if (size_last == part_size) {
-                    if (ring[b] < ring[prev])
-                        continue;
-                    else {
-                        int res = cmp(ring, N, b, e, prev, b, part_size);
-                        if (0 <= res) {
-                            min_beg = b;
-                            min_end = e; 
-                        }
-                    }
-                }    
+            if (0 == full_parts) {
+                min_beg = b;
+                min_end = e; 
             }
                
         }
 
 
+        stringstream ss;
+    
         for (;min_beg != min_end; min_beg=(min_beg + 1) % N)
-            cout << (int)ring[min_beg];
-        cout << endl;
+            ss << (int)ring[min_beg];
+        cout << ss.str() << endl;
     }
 
 }
