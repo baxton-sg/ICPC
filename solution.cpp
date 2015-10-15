@@ -18,7 +18,7 @@ typedef vector<INT> storage;
 
 
 
-
+/*
 struct time_data {
     int cnt;
     double clocks;
@@ -57,13 +57,13 @@ struct timer {
     }    
 };
 map<string, time_data> timer::timers; 
-
+*/
 
 
 
 int cmp_impl(const INT* ring, int N, int beg1, int end1, int beg2, int end2/*, int size*/) {
 
-    timer tm("cmp");
+//timer tm("cmp");
 
     /*
     int res;
@@ -176,7 +176,7 @@ void solve(const INT* ring, int N, int K) {
 //                b = i;
             int  e = (b + part_size) % N; // increment(b, N, part_size);
 
-timer tm1("main loop");
+//timer tm1("main loop");
 
             if (min_beg != min_end) {
                 if (ring[min_beg] < ring[b])
@@ -203,7 +203,7 @@ timer tm1("main loop");
 
 
             while ((space + part_size) <= N && full_parts) {
-timer tm2("nested loop");
+//timer tm2("nested loop");
 
                 int res = cmp(ring, N, b, e, tmp_b, tmp_e);
 
@@ -239,7 +239,7 @@ timer tm2("nested loop");
         cout << ss.str() << endl;
     }
 
-timer::print(cout);
+//timer::print(cout);
 }
 
 
