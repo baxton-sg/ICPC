@@ -172,19 +172,19 @@ void solve(const INT* ring, int N, int K) {
 
         for (int i = 0; i < N; ++i) {
             int b = indices[i];
-//                b = i;
+                b = i;
             int  e = (b + part_size) % N; // increment(b, N, part_size);
 
 //timer tm1("main loop");
 
             if (min_beg != min_end) {
-                if (ring[min_beg] < ring[b])
-                    continue;
-                else {
+//                if (ring[min_beg] < ring[b])
+//                    continue;
+//                else {
                     int res = cmp(ring, N, min_beg, min_end, b, e/*, part_size*/);
                     if (0 >= res)
                         continue;
-                }
+//                }
             }
 
 
@@ -192,7 +192,6 @@ void solve(const INT* ring, int N, int K) {
             //begins[1] = e;
 
 
-            int cur_beg = 2;
             int full_parts = part_size_num - 1;
             int full_parts_small = part_size_small;
 
@@ -201,7 +200,7 @@ void solve(const INT* ring, int N, int K) {
             int space = part_size;
 
 
-            while ((space + part_size) <= N && full_parts) {
+            while (full_parts) {
 //timer tm2("nested loop");
 
                 int res = cmp(ring, N, b, e, tmp_b, tmp_e);
@@ -212,11 +211,11 @@ void solve(const INT* ring, int N, int K) {
                     tmp_b = tmp_e;
                 }
                 else {
-                    if (!full_parts_small) 
+                    if (0 == full_parts_small)
                         break;
-                    space += part_size_small;
+                    space += part_size - 1;
                     full_parts_small -= 1;
-                    tmp_b = (tmp_b + part_size_small) % N;
+                    tmp_b = (tmp_b + (part_size - 1)) % N;
                 }
                 tmp_e = (tmp_b + part_size) % N;
 
@@ -224,6 +223,10 @@ void solve(const INT* ring, int N, int K) {
                 
             // last one partition
             if (0 == full_parts) {
+cout << "found: ";
+for (int z = b; z != e; z = (z + 1) % N)
+    cout << ring[z];
+cout << endl;
                 min_beg = b;
                 min_end = e; 
             }
