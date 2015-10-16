@@ -2,12 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
-#include <ctime>
-
-#include <map>
-//#include <unordered_set>
-#include <algorithm>
-//#include <cstring>
+#include <set>
 
 
 using namespace std;
@@ -18,97 +13,14 @@ typedef vector<INT> storage;
 
 
 
-/*
-struct time_data {
-    int cnt;
-    double clocks;
-    time_data() :
-        cnt(0),
-        clocks(0.)
-    {}
-};
 
-struct timer {
-    static map<string, time_data> timers;
+int cmp_impl(const INT* ring, int N, int beg1, int end1, int beg2, int end2) {
 
-    string name;
-    clock_t start;
-    
-    timer(const char* timer_name) :
-        name(timer_name),
-        start(clock())
-    {}
-
-
-    ~timer() {
-        time_data& td = timers[name];
-        td.cnt += 1;
-        td.clocks += double(clock() - start);
-    }
-    
-    static ostream& print(ostream& os) {
-        for (map<string, time_data>::const_iterator it = timers.begin(); it != timers.end(); ++it) {
-            const string& name = it->first;
-            const time_data& td = it->second;
-
-            os << name << ": total sec " << (td.clocks / CLOCKS_PER_SEC) << " cnt " << td.cnt << " (avr: " << ((td.clocks / td.cnt) / CLOCKS_PER_SEC) << ")" << endl;
-        }
-        return os;
-    }    
-};
-map<string, time_data> timer::timers; 
-*/
-
-
-
-int cmp_impl(const INT* ring, int N, int beg1, int end1, int beg2, int end2/*, int size*/) {
-
-//timer tm("cmp");
-
-    /*
-    int res;
-    int size4 = size / 4;
-    for (int i = 0; i < size4; ++i) {
-        res = ring[beg1] - ring[beg2];
-        if (0 < res) return 1;
-        else if (0 > res) return -1;
-        beg1 = (beg1 + 1) % N;
-        beg2 = (beg2 + 1) % N;    
-     
-        res = ring[beg1] - ring[beg2];
-        if (0 < res) return 1;
-        else if (0 > res) return -1;
-        beg1 = (beg1 + 1) % N;
-        beg2 = (beg2 + 1) % N;   
-        
-        res = ring[beg1] - ring[beg2];
-        if (0 < res) return 1;
-        else if (0 > res) return -1;
-        beg1 = (beg1 + 1) % N;
-        beg2 = (beg2 + 1) % N;   
-        
-        res = ring[beg1] - ring[beg2];
-        if (0 < res) return 1;
-        else if (0 > res) return -1;
-        beg1 = (beg1 + 1) % N;
-        beg2 = (beg2 + 1) % N;          
-    }
-    for (int i = size4*4; i < size; ++i) {
-        res = ring[beg1] - ring[beg2];
-        if (0 < res) return 1;
-        else if (0 > res) return -1;
-        beg1 = (beg1 + 1) % N;
-        beg2 = (beg2 + 1) % N;           
-    }
-    return 0;
-    */
-    
-    
-    int res = ring[beg1] - ring[beg2];
+    int res = 0;
     while(!res && beg1 != end1) {
+        res = ring[beg1] - ring[beg2];
         beg1 = (beg1 + 1) % N;
         beg2 = (beg2 + 1) % N;
-        res = ring[beg1] - ring[beg2];
     }
     return res;
     
@@ -171,30 +83,26 @@ void solve(const INT* ring, int N, int K) {
         }
 
 
-        vector<int> indices;
-        indices.reserve(N);
+        set<int, idx_less> indices(idx_less(ring, N, part_size));
         for (int i = 0; i < N; ++i)
-            indices.push_back(i);
-        sort(indices.begin(), indices.end(), idx_less(ring, N, part_size));
+            indices.insert(i);
 
 
         int min_beg = 0, min_end = 0;
 
-        for (int i = 0; i < N; ++i) {
-            int b = indices[i];
-//                b = i;
-            int  e = (b + part_size) % N; // increment(b, N, part_size);
+        for (set<int>::const_iterator it = indices.begin(); it != indices.end(); ++it) {
+            int b = *it;
+            int e = (b + part_size) % N; // increment(b, N, part_size);
 
-//timer tm1("main loop");
 
             if (min_beg != min_end) {
-//                if (ring[min_beg] < ring[b])
-//                    continue;
-//                else {
+                if (ring[min_beg] < ring[b])
+                    continue;
+                else {
                     int res = cmp(ring, N, min_beg, min_end, b, e/*, part_size*/);
                     if (0 >= res)
                         continue;
-//                }
+                }
             }
 
 
@@ -211,7 +119,6 @@ void solve(const INT* ring, int N, int K) {
 
 
             while (full_parts) {
-//timer tm2("nested loop");
 
                 int res = cmp(ring, N, b, e, tmp_b, tmp_e);
 
@@ -233,12 +140,9 @@ void solve(const INT* ring, int N, int K) {
                 
             // last one partition
             if (0 == full_parts) {
-//cout << "found: ";
-//for (int z = b; z != e; z = (z + 1) % N)
-//    cout << ring[z];
-//cout << endl;
                 min_beg = b;
                 min_end = e; 
+                break;
             }
                
         }
@@ -251,7 +155,6 @@ void solve(const INT* ring, int N, int K) {
         cout << ss.str() << endl;
     }
 
-//timer::print(cout);
 }
 
 
