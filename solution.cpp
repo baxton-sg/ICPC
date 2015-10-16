@@ -53,18 +53,16 @@ void get_start_stop(const INT* ring, int N, const vector<int>& indices, int& sta
     int step = (int)sqrt((double(N) - .5) * 2.);
 
     bool found = false;
-    int b;
     int i = step;
     for (; i < N; i += step) {
-        b = indices[i];
-        int e = (b + part_size) % N; 
+        int b = indices[i];
+        int e = (b + part_size) % N;
 
         int full_parts = part_size_num - 1;
         int full_parts_small = part_size_small;
 
         int tmp_b = e;
         int tmp_e = (tmp_b + part_size) % N;
-        int space = part_size;
 
 
         while (full_parts) {
@@ -73,13 +71,11 @@ void get_start_stop(const INT* ring, int N, const vector<int>& indices, int& sta
 
             if (0 <= res) {
                 full_parts -= 1;
-                space += part_size;
                 tmp_b = tmp_e;
             }
             else {
                 if (0 == full_parts_small)
                     break;
-                space += part_size - 1;
                 full_parts_small -= 1;
                 tmp_b = (tmp_b + (part_size - 1)) % N;
             }
@@ -92,6 +88,8 @@ void get_start_stop(const INT* ring, int N, const vector<int>& indices, int& sta
             found = true;
             break;
         }
+
+        --step;
     }
 
     if (found) {
@@ -107,7 +105,7 @@ void get_start_stop(const INT* ring, int N, const vector<int>& indices, int& sta
 
 // 3 <= N && N <= 100000
 // 2 <= K && K <= N
-template<int cmp(const INT*, int, int, int, int, int)>
+template<int cmp(const INT*, int, int, int, int, int/*, int*/)>
 void solve(const INT* ring, int N, int K) {
     if (K == N) {
         int m = ring[0];
@@ -159,6 +157,8 @@ void solve(const INT* ring, int N, int K) {
         int not_found = 0;
         int found = 0;
 
+        //for (set<int>::const_iterator it = indices.begin(); it != indices.end(); ++it) {
+        //for (set<int>::reverse_iterator it = indices.rbegin(); it != indices.rend(); ++it) {
         for (int i = start_idx; i < stop_idx; ++i) {
             int b = indices[i];
             int e = (b + part_size) % N; // increment(b, N, part_size);
@@ -173,6 +173,11 @@ void solve(const INT* ring, int N, int K) {
                         continue;
                 }
             }
+
+
+            //begins[0] = b;
+            //begins[1] = e;
+
 
             int full_parts = part_size_num - 1;
             int full_parts_small = part_size_small;
@@ -204,11 +209,23 @@ void solve(const INT* ring, int N, int K) {
                 
             // last one partition
             if (0 == full_parts) {
+//cout << "found: ";
+//for (int z = b; z != e; z = (z + 1) % N) 
+//    cout << ring[z];
+//cout << endl;
+//found += 1;
                 min_beg = b;
                 min_end = e; 
                 break;
             }
+//            else {
+//not_found += 1;
+//            }
+               
         }
+
+//cout << "total found: " << found << endl;
+//cout << "total not found: " << not_found << endl;
 
 
         stringstream ss;
