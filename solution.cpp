@@ -1,4 +1,6 @@
 
+
+
 #include <iostream>
 #include <vector>
 #include <sstream>
@@ -9,110 +11,91 @@
 using namespace std;
 
 
-typedef int INT;
-typedef vector<INT> storage;
+typedef unsigned long long INT;
 
 
 
 
-int cmp_impl(const INT* ring, int N, int beg1, int end1, int beg2, int end2) {
+
+struct params {
+    int N;
+    int K;
+    
+    int part_size;
+    int part_size_num;
+    int part_size_small_num;
+
+    int num_per_INT;
+    INT last_mask;
+    INT first_mask;    
+
+    INT* ring;
+
+    ~params() {
+        delete [] ring;
+    }
+};
+
+
+int cmp(const params& p, int beg1, int beg2) {
 
     int res = 0;
-    while(0 == res && beg1 != end1) {
-        res = ring[beg1] - ring[beg2];
-        beg1 = (beg1 + 1) % N;
-        beg2 = (beg2 + 1) % N;
+
+    if (p.part_size <= sizeof(INT)) {
+        return p.ring[beg1] - p.ring[beg2];
     }
+
+    int size = p.part_size / sizeof(INT);
+    bool last_exists = p.part_size % sizeof(INT);
+    int i = 0;
+    for (; i < size; ++i) {
+        res = p.ring[beg1] - p.ring[beg2];
+        if (0 != res)
+            return res;
+
+        beg1 = (beg1 + sizeof(INT)) % p.N;
+        beg2 = (beg2 + sizeof(INT)) % p.N;
+    } 
+
+    if (last_exists) 
+        res = (p.ring[beg1] & p.last_mask) - (p.ring[beg2] % p.last_mask); 
+
     return res;
-    
 }
 
 
 
 struct idx_less {
-    const INT* ring;
-    int size;
-    int N;
-    idx_less(const INT* v, int v_size, int part_size) :
-        ring(v),
-        size(part_size),
-        N(v_size)
+    const params& p;
+    idx_less(const params& par) :
+        p(par)
     {}
 
     bool operator() (int i1, int i2) {
-        int e1 = (i1 + size) % N;
-        int e2 = (i2 + size) % N;
-        int res = (ring[i1] < ring[i2]) || 0 > cmp_impl(ring, N, i1, e1, i2, e2);
-        return res;
+        return 0 > cmp(p, i1, i2);
     }
 };
 
 
-template<int cmp(const INT*, int, int, int, int, int)>
-void get_start_stop(const INT* ring, int N, const vector<int>& indices, int& start_idx, int& stop_idx, int part_size, int part_size_num, int part_size_small) {
-    int step = (int)sqrt((double(N) - .5) * 2.);
 
-    bool found = false;
-    int i = step;
-    for (; i < N; i += step) {
-        int b = indices[i];
-        int e = (b + part_size) % N;
-
-        int full_parts = part_size_num - 1;
-        int full_parts_small = part_size_small;
-
-        int tmp_b = e;
-        int tmp_e = (tmp_b + part_size) % N;
-
-
-        while (full_parts) {
-
-            int res = cmp(ring, N, b, e, tmp_b, tmp_e);
-
-            if (0 <= res) {
-                full_parts -= 1;
-                tmp_b = tmp_e;
-            }
-            else {
-                if (0 == full_parts_small)
-                    break;
-                full_parts_small -= 1;
-                tmp_b = (tmp_b + (part_size - 1)) % N;
-            }
-            tmp_e = (tmp_b + part_size) % N;
-
-        }   // while true
-            
-        // last one partition
-        if (0 == full_parts) {
-            found = true;
-            break;
-        }
-
-        --step;
-    }
-
-    if (found) {
-        start_idx = i - step;
-        stop_idx = i;
-    }
-    else {
-        start_idx = i;
-        stop_idx = N;
-    }
+ostream& print(ostream& os, const params& p, int b, int e) {
+    int shift = p.part_size <= sizeof(INT) ? (p.part_size - 1) * 8 : (sizeof(INT) - 1) * 8;
+    for (int z = b; z != e; z = (z + 1) % p.N) 
+        cout << (INT)((p.ring[z] & p.first_mask) >> shift);
+    cout << endl;
 }
+
 
 
 // 3 <= N && N <= 100000
 // 2 <= K && K <= N
-template<int cmp(const INT*, int, int, int, int, int/*, int*/)>
-void solve(const INT* ring, int N, int K) {
-    if (K == N) {
-        int m = ring[0];
+void solve(params& p) {
+    if (p.K == p.N) {
+        int m = p.ring[0];
         if (m < 9) {
-            for (int i = 0; i < N; ++i) {
-                if (m < ring[i]) {
-                    m = ring[i];
+            for (int i = 0; i < p.N; ++i) {
+                if (m < p.ring[i]) {
+                    m = p.ring[i];
                     if (m == 9)
                         break;
                 } 
@@ -122,122 +105,116 @@ void solve(const INT* ring, int N, int K) {
     }
     else {
 
-        int part_size = N / K;
-        part_size = (N % K) ?  part_size + 1 : part_size;
-        int part_size_num = 0;
-        int part_size_small = 0;
-        int tmp_n = N;
-        int tmp_k = K;
-        while (tmp_k) {
-            int s = tmp_n % tmp_k ? 
-                    tmp_n / tmp_k + 1:
-                    tmp_n / tmp_k;
-            tmp_k -= 1;
-            tmp_n -= s;
-            part_size_num += (s == part_size);
-            part_size_small += (s != part_size);
-        }
-
-
         vector<int> indices;
-        indices.reserve(N);
-        for (int i = 0; i < N; ++i) {
+        indices.reserve(p.N);
+        for (int i = 0; i < p.N; ++i) {
             indices.push_back(i);
         }
-        sort(indices.begin(), indices.end(), idx_less(ring, N, part_size));
+        sort(indices.begin(), indices.end(), idx_less(p));
 
 
-        int start_idx = 0, stop_idx = 0;
-        get_start_stop<cmp_impl>(ring, N, indices, start_idx, stop_idx, part_size, part_size_num, part_size_small);
+        int min_beg = 0, 
+            min_end = 0;
 
-
-        int min_beg = indices[stop_idx], 
-            min_end = (min_beg + part_size) % N;
-
-        int not_found = 0;
-        int found = 0;
-
-        //for (set<int>::const_iterator it = indices.begin(); it != indices.end(); ++it) {
-        //for (set<int>::reverse_iterator it = indices.rbegin(); it != indices.rend(); ++it) {
-        for (int i = start_idx; i < stop_idx; ++i) {
+        for (int i = 0; i < p.N; ++i) {
             int b = indices[i];
-            int e = (b + part_size) % N; // increment(b, N, part_size);
+            int e = (b + p.part_size) % p.N;
 
-
-            if (min_beg != min_end) {
-                if (ring[min_beg] < ring[b])
-                    continue;
-                else {
-                    int res = cmp(ring, N, min_beg, min_end, b, e/*, part_size*/);
-                    if (0 >= res)
-                        continue;
-                }
-            }
-
-
-            //begins[0] = b;
-            //begins[1] = e;
-
-
-            int full_parts = part_size_num - 1;
-            int full_parts_small = part_size_small;
+            int full_parts = p.part_size_num - 1;
+            int full_parts_small = p.part_size_small_num;
 
             int tmp_b = e;
-            int tmp_e = (tmp_b + part_size) % N;
-            int space = part_size;
+            int tmp_e = (tmp_b + p.part_size) % p.N;
 
 
             while (full_parts) {
 
-                int res = cmp(ring, N, b, e, tmp_b, tmp_e);
+                int res = cmp(p, b, tmp_b);
 
                 if (0 <= res) {
                     full_parts -= 1;
-                    space += part_size;
                     tmp_b = tmp_e;
                 }
                 else {
                     if (0 == full_parts_small)
                         break;
-                    space += part_size - 1;
                     full_parts_small -= 1;
-                    tmp_b = (tmp_b + (part_size - 1)) % N;
+                    tmp_b = (tmp_b + (p.part_size - 1)) % p.N;
                 }
-                tmp_e = (tmp_b + part_size) % N;
+                tmp_e = (tmp_b + p.part_size) % p.N;
 
             }   // while true
                 
             // last one partition
             if (0 == full_parts) {
-//cout << "found: ";
-//for (int z = b; z != e; z = (z + 1) % N) 
-//    cout << ring[z];
-//cout << endl;
-//found += 1;
                 min_beg = b;
                 min_end = e; 
                 break;
+
+//                cout << "FOUND " << i << " [" << indices[i] << "] ";
+//                print(cout, p, b, e);
             }
 //            else {
-//not_found += 1;
+//                cout << "not found " << i << " [" << indices[i] << "] ";
+//                print(cout, p, b, e);
 //            }
-               
         }
-
-//cout << "total found: " << found << endl;
-//cout << "total not found: " << not_found << endl;
 
 
         stringstream ss;
-    
-        for (;min_beg != min_end; min_beg=(min_beg + 1) % N)
-            ss << (int)ring[min_beg];
-        cout << ss.str() << endl;
+        print(ss, p, min_beg, min_end);
+        cout << ss.str();
     }
 
 }
 
 
+
+void prepare_params(params& p) {
+    p.part_size = p.N / p.K;
+    p.part_size = (p.N % p.K) ?  p.part_size + 1 : p.part_size;
+    p.part_size_num = 0;
+    p.part_size_small_num = 0;
+    int tmp_n = p.N;
+    int tmp_k = p.K;
+    while (tmp_k) {
+        int s = tmp_n % tmp_k ?
+                tmp_n / tmp_k + 1:
+                tmp_n / tmp_k;
+        tmp_k -= 1;
+        tmp_n -= s;
+        p.part_size_num += (s == p.part_size);
+        p.part_size_small_num += (s != p.part_size);
+    }
+
+    p.num_per_INT = p.N > sizeof(INT) ? sizeof(INT) : p.N;
+    p.num_per_INT = p.part_size > p.num_per_INT ? p.num_per_INT : p.part_size;
+
+    int shift = sizeof(INT) - p.part_size;
+    INT tmp_mask = p.part_size <= sizeof(INT) ? ~((~0 >> shift) << shift) : ~0;
+    shift = (sizeof(INT) - p.part_size % sizeof(INT)) * 8;
+   
+    p.last_mask = (tmp_mask >> shift) << shift;
+
+    shift = p.part_size <= sizeof(INT) ? (p.part_size - 1) * 8 : (sizeof(INT) - 1) * 8;
+    p.first_mask = 0x00FF << shift; 
+
+    p.ring = new INT[p.N];
+    for (int i = 0; i < p.N; ++i)
+        p.ring[i] = 0;
+    
+}
+
+void push_val(params& p, INT val, int idx) {
+    idx -= p.num_per_INT - 1;
+    idx = idx + p.N * ((unsigned int)idx >> (8 * sizeof(int) - 1));
+
+    for (int i = 0; i < p.num_per_INT; ++i) {
+        p.ring[idx] |= INT(val) << (i * 8);
+
+        idx = (idx + 1) % p.N;
+    }
+}
 
 
 int main(int argc, const char* argv[]) {
@@ -245,20 +222,38 @@ int main(int argc, const char* argv[]) {
     int N, K;
     cin >> N >> K;
 
-    storage ring(N+16, 0);
-    size_t addr = 0;
-    while((size_t)&ring[addr] % 16)
-        addr += 1;
-    
+    params p;
+    p.N = N;
+    p.K = K;
+    prepare_params(p);
+
+
     string line;
     cin >> line;
 
-    for (int i = addr; i < (N+addr); ++i) {
-        ring[i] = int(line[i-addr] - '0');
+    for (int i = 0; i < N; ++i) {
+        push_val(p, INT(line[i] - '0'), i);
     }
 
-    solve<cmp_impl>(&ring[addr], N, K);
+    solve(p);
+/*
+    for (int i = 0; i < p.N; ++i) {
+        cout << "[" << i << "] ";
+        for (int j = sizeof(INT) - 1; j >= 0; --j) {
+            INT v = (INT)0x00FF & (p.ring[i] >> (j * 8));
+            cout << v;
+        }
+        cout << endl;
+    }
+    cout << "Last mask: ";
+    for (int j = sizeof(INT) - 1; j >= 0; --j) {
+        INT v = (INT)0x00FF & (p.last_mask >> (j * 8));
+        cout << v;
+    }
+    cout << endl;
+*/
 
 
     return 0;
 }
+
