@@ -11,7 +11,7 @@
 using namespace std;
 
 
-typedef unsigned int INT;
+typedef unsigned long long INT;
 
 
 
@@ -47,16 +47,21 @@ int cmp(const params& p, int beg1, int beg2) {
     bool last_exists = p.part_size % sizeof(INT);
 
     for (int i = 0; i < size; ++i) {
-        int res = p.ring[beg1] - p.ring[beg2];
-        if (0 != res)
-            return res;
+        if (p.ring[beg1] > p.ring[beg2])
+            return 1;
+        else if (p.ring[beg1] < p.ring[beg2])
+            return -1;
 
         beg1 = (beg1 + p.num_per_INT) % p.N;
         beg2 = (beg2 + p.num_per_INT) % p.N;
     } 
 
-    if (last_exists) 
-        return (p.ring[beg1] & p.last_mask) - (p.ring[beg2] & p.last_mask); 
+    if (last_exists) {
+        if ((p.ring[beg1] & p.last_mask) > (p.ring[beg2] & p.last_mask))
+            return 1;
+        else if ((p.ring[beg1] & p.last_mask) < (p.ring[beg2] & p.last_mask))
+            return -1;
+    }
 
     return 0;
 }
@@ -81,6 +86,7 @@ ostream& print(ostream& os, const params& p, int b, int e) {
     for (int z = b; z != e; z = (z + 1) % p.N) 
         cout << (INT)((p.ring[z] & p.first_mask) >> shift);
     cout << endl;
+    return os;
 }
 
 
@@ -210,15 +216,30 @@ void prepare_params(params& p) {
 
     p.num_per_INT = p.N > sizeof(INT) ? sizeof(INT) : p.N;
     p.num_per_INT = p.part_size > p.num_per_INT ? p.num_per_INT : p.part_size;
+//cout << "Num per INT: " << p.num_per_INT << endl;
 
     int shift = sizeof(INT) - p.part_size;
-    INT tmp_mask = p.part_size <= sizeof(INT) ? ~((~0 >> shift) << shift) : ~0;
+    INT tmp_mask = p.part_size <= sizeof(INT) ? ~((~INT(0) >> shift) << shift) : ~INT(0);
     shift = (sizeof(INT) - p.part_size % sizeof(INT)) * 8;
+//cout << "shift " << shift << " so(" << sizeof(INT) << ")" << endl;
    
     p.last_mask = (tmp_mask >> shift) << shift;
+//cout << "Last mask: ";
+//for (int i = sizeof(INT)-1; i >= 0; --i) {
+//    INT v = (INT)0xFF & (p.last_mask >> (i * 8));
+//    cout << v;
+//}
+//cout << endl;
 
     shift = p.part_size <= sizeof(INT) ? (p.part_size - 1) * 8 : (sizeof(INT) - 1) * 8;
-    p.first_mask = 0x00FF << shift; 
+    p.first_mask = INT(0xFF) << shift; 
+//cout << "First mask: ";
+//for (int i = sizeof(INT)-1; i >= 0; --i) {
+//    INT v = (INT)0xFF & (p.first_mask >> (i * 8));
+//    cout << v;
+//}
+//cout << endl;
+
 
     p.ring = new INT[p.N];
     for (int i = 0; i < p.N; ++i)
