@@ -11,7 +11,7 @@
 using namespace std;
 
 
-typedef unsigned long long INT;
+typedef unsigned int INT;
 
 
 
@@ -39,28 +39,26 @@ struct params {
 
 int cmp(const params& p, int beg1, int beg2) {
 
-    int res = 0;
-
     if (p.part_size <= sizeof(INT)) {
         return p.ring[beg1] - p.ring[beg2];
     }
 
     int size = p.part_size / sizeof(INT);
     bool last_exists = p.part_size % sizeof(INT);
-    int i = 0;
-    for (; i < size; ++i) {
-        res = p.ring[beg1] - p.ring[beg2];
+
+    for (int i = 0; i < size; ++i) {
+        int res = p.ring[beg1] - p.ring[beg2];
         if (0 != res)
             return res;
 
-        beg1 = (beg1 + sizeof(INT)) % p.N;
-        beg2 = (beg2 + sizeof(INT)) % p.N;
+        beg1 = (beg1 + p.num_per_INT) % p.N;
+        beg2 = (beg2 + p.num_per_INT) % p.N;
     } 
 
     if (last_exists) 
-        res = (p.ring[beg1] & p.last_mask) - (p.ring[beg2] % p.last_mask); 
+        return (p.ring[beg1] & p.last_mask) - (p.ring[beg2] & p.last_mask); 
 
-    return res;
+    return 0;
 }
 
 
@@ -105,12 +103,35 @@ void solve(params& p) {
     }
     else {
 
+/*
+for (int i = 0; i < p.N; ++i) {
+    cout << "[" << i << "] ";
+    for (int j = sizeof(INT) - 1; j >= 0; --j) {
+        INT v = (INT)0x00FF & (p.ring[i] >> (j * 8));
+        cout << v;
+    }
+    cout << endl;
+}
+cout << "---" << endl;
+*/
+
+
         vector<int> indices;
         indices.reserve(p.N);
         for (int i = 0; i < p.N; ++i) {
             indices.push_back(i);
         }
         sort(indices.begin(), indices.end(), idx_less(p));
+
+/*
+for (int z = 0; z < p.N; ++z) {
+    cout << z << "\t[" << indices[z] << "]\t";
+    int b = indices[z];
+    int e = (b + p.part_size) % p.N;
+    print(cout, p, b, e);
+}
+cout << endl;
+*/
 
 
         int min_beg = 0, 
