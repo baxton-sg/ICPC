@@ -202,12 +202,12 @@ cout << "---" << endl;
             indices[i] = i;
         //sort(&indices[0], &indices[p.N], idx_less(p));
         
-        if (2 < p.part_size)
+        if (15 < p.part_size)
             sort(&indices[0], &indices[p.N], idx_less(p));
         else
             radixSort(p, indices);
         
-        int back_indices[p.N];
+        int back_indices[p.N * 2];
         int size4 = p.N / 4 * 4;
         for (int i = 0; i < size4; i += 4) {
             back_indices[indices[i]] = i;
@@ -217,6 +217,10 @@ cout << "---" << endl;
         }
         for (int i = size4; i < p.N; ++i)
             back_indices[indices[i]] = i;
+
+        for (int i = p.N; i < p.N * 2; ++i)
+            back_indices[i] = back_indices[i - p.N]; 
+ 
 
 /*
 for (int z = 0; z < p.N; ++z) {
@@ -234,41 +238,27 @@ cout << endl;
 
         for (int i = 0; i < p.N; ++i) {
             int b = indices[i];
+            int b_size = back_indices[b];
             
 
             int full_parts = p.part_size_num - 1;
             int full_parts_small = p.part_size_small_num;
 
-            int tmp_b = (b + p.part_size) % p.N;;
+            int tmp_b = b + p.part_size;
 
             while (full_parts) {
 
-                //int res = cmp(p, b, tmp_b);
-                int res = back_indices[b] - back_indices[tmp_b];
+                int res = b_size - back_indices[tmp_b];
 
                 if (0 <= res) {
                     full_parts -= 1;
-                    tmp_b = (tmp_b + p.part_size) % p.N;
+                    tmp_b = tmp_b + p.part_size;
                 }
                 else {
                     if (0 == full_parts_small)
                         break;
                     full_parts_small -= 1;
-                    tmp_b = (tmp_b + (p.part_size - 1)) % p.N;
-                    
-                    ///
-                    res = back_indices[b] - back_indices[tmp_b];
-
-                    if (0 <= res) {
-                        full_parts -= 1;
-                        tmp_b = (tmp_b + p.part_size) % p.N;
-                    }
-                    else {
-                        if (0 == full_parts_small)
-                            break;
-                        full_parts_small -= 1;
-                        tmp_b = (tmp_b + (p.part_size - 1)) % p.N;
-                    }
+                    tmp_b = tmp_b + (p.part_size - 1);
                 }            
 
             }   // while true
@@ -399,3 +389,4 @@ int main(int argc, const char* argv[]) {
 
     return 0;
 }
+
