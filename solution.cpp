@@ -177,13 +177,16 @@ int count_num(const params& p, set<int>& tail, int* indices, int start) {
     if (start) {
 
         const int end1 = indices[start] + p.part_size - 1;
-        const int end2 = indices[start] - p.part_size + 1;
+        const int end2 = indices[start] + p.N - p.part_size + 1;
 
         // counting
         bool found_small = false;
         set<int>::const_iterator is = tail.begin();
+        int is_val;
         while (!found_small && is != tail.end()) {
-            if (*is < end2 || end1 < *is)
+            is_val = *is > indices[start] ? *is : *is + p.N;
+
+            if (end1 < is_val && is_val < end2)
                 found_small = true;
             else
                 ++is;
@@ -192,23 +195,18 @@ int count_num(const params& p, set<int>& tail, int* indices, int start) {
         if (found_small) {
             set<int>::const_iterator ib = is; ++ib;
 
-            if (ib != tail.end()) {
-                for (; ib != tail.end(); ++ib) {
-                    if (*ib < end2 || end1 < *ib) {
-                        const int space = *ib - *is;
-                        if (space >= p.part_size) {
-                            ++accum;
-                            is = ib;
-                        }
+            for (; ib != tail.end(); ++ib) {
+                int tmp = *ib > indices[start] ? *ib : *ib + p.N;
+                if (end1 < tmp && tmp < end2) {
+                    const int space = tmp > is_val ? tmp - is_val : is_val - tmp;
+                    if (space >= p.part_size) {
+                        ++accum;
+                        is = ib;
+                        is_val = *is > indices[start] ? *is : *is + p.N;
                     }
                 }
             }
-            else {
-                int space = *is > indices[start] ? *is - indices[start] : indices[start] = *is;
-                if (space >= p.part_size) {
-                    ++accum;
-                }
-            }
+            ++accum;
         }
 
     }
