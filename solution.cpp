@@ -176,41 +176,37 @@ int count_num(const params& p, set<int>& tail, int* indices, int start) {
 
     if (start) {
 
-        const int end1 = indices[start] + p.N - p.part_size + 1;
+        const int end1 = indices[start] + p.part_size - 1;
         const int end2 = indices[start] - p.part_size + 1;
 
         // counting
         bool found_small = false;
         set<int>::const_iterator is = tail.begin();
         while (!found_small && is != tail.end()) {
-            if (indices[start] > *is) {
-                if (end2 > *is) {
-                    found_small = true;
-                }
-                else {
-                    ++is;
-                }
-            }
-            else {
-                if (end1 > *is) {
-                    found_small = true;
-                }
-                else {
-                    ++is;
-                }
-            }
+            if (*is < end2 || end1 < *is)
+                found_small = true;
+            else
+                ++is;
         }
 
         if (found_small) {
             set<int>::const_iterator ib = is; ++ib;
 
-            for (; ib != tail.end(); ++ib) {
-                if (indices[start] > *ib && end2 > *ib || indices[start] <= *ib && end1 > *ib) {
-                    const int space = *ib - *is;
-                    if (space >= p.part_size) {
-                        ++accum;
-                        is = ib;
+            if (ib != tail.end()) {
+                for (; ib != tail.end(); ++ib) {
+                    if (*ib < end2 || end1 < *ib) {
+                        const int space = *ib - *is;
+                        if (space >= p.part_size) {
+                            ++accum;
+                            is = ib;
+                        }
                     }
+                }
+            }
+            else {
+                int space = *is > indices[start] ? *is - indices[start] : indices[start] = *is;
+                if (space >= p.part_size) {
+                    ++accum;
                 }
             }
         }
@@ -313,20 +309,25 @@ cout << endl;
 
         }
 
+//cout << "start: " << start << "; accum: " << accum << endl;        
 
         while (accum < (p.part_size_num - 1)) {
 
             int i = 0;
-            while (i++ < 500 && start < p.N)
+            int step = p.N - 1 - start > 500 ? 500 : 1;
+            while (i++ < step && start < (p.N-1))
                tail.insert(indices[start++]);
 
             accum = count_num(p, tail, indices, start);
+//cout << "start: " << start << "; accum: " << accum << endl;
         }
+
 
 	while (accum > (p.part_size_num - 1)) {
             set<int>::iterator it = tail.find(--start);
             tail.erase(it);
             accum = count_num(p, tail, indices, start);
+//cout << "start: " << start << "; accum: " << accum << endl;
 	}
 
 
