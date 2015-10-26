@@ -3,8 +3,11 @@
 
 
 
+
+
 #include <iostream>
 #include <vector>
+#include <set>
 #include <sstream>
 #include <algorithm>
 #include <cmath>
@@ -12,10 +15,11 @@
 #include <memory>
 
 
+
 using namespace std;
 
 
-typedef unsigned long long INT;
+typedef unsigned int INT;
 
 
 
@@ -33,7 +37,7 @@ struct params {
     INT last_mask;
     INT first_mask;    
 
-    INT ring[100000] __attribute__((aligned(16)));
+    INT ring[100000];
 
 };
 
@@ -200,18 +204,34 @@ cout << "---" << endl;
         int indices[p.N];
         for (int i = 0; i < p.N; ++i)
             indices[i] = i;
-        //sort(&indices[0], &indices[p.N], idx_less(p));
         
-//        if (15 < p.part_size)
+        if (15 < p.part_size)
             sort(&indices[0], &indices[p.N], idx_less(p));
-//        else
-//            radixSort(p, indices);
+        else
+            radixSort(p, indices);
+
+
+        if (p.part_size_num == 1) {
+            stringstream ss;
+            int min_beg = indices[0];
+            int min_end = (min_beg + p.part_size) % p.N;
+            print(ss, p, min_beg, min_end);
+            cout << ss.str();
+            return;
+        }
+
+
         
         int back_indices[p.N * 2] __attribute__((aligned(16)));
-        back_indices[indices[0]] = 0;
-        for (int i = 1; i < p.N; ++i) {
+        int size4 = p.N / 4 * 4;
+        for (int i = 0; i < size4; i += 4) {
             back_indices[indices[i]] = i;
+            back_indices[indices[i+1]] = i+1;
+            back_indices[indices[i+2]] = i+2;
+            back_indices[indices[i+3]] = i+3;
         }
+        for (int i = size4; i < p.N; ++i)
+            back_indices[indices[i]] = i;
 
         for (int i = p.N; i < p.N * 2; ++i)
             back_indices[i] = back_indices[i - p.N]; 
@@ -219,153 +239,190 @@ cout << "---" << endl;
 
 /*
 for (int z = 0; z < p.N; ++z) {
-    cout << z << "\t[" << indices[z] << "]\t[" << back_indices[indices[z]] << "]\t";
+    cout << z << "\t[" << indices[z] << "]\t";
     int b = indices[z];
     int e = (b + p.part_size) % p.N;
     print(cout, p, b, e);
 }
 cout << endl;
 */
+        int accum = 0;
+        int start = p.part_size_num - 1;
+cout << "Num: " << p.part_size_num << endl;
+cout << "Start: " << start << endl;
+        set<int> tail;
 
-        int small_step = p.part_size - 1;
-        int ps1 = p.part_size;
-        int ps2 = p.part_size * 2;
-        int ps3 = p.part_size * 3;
-        int ps4 = p.part_size * 4;
+        // initial population
+        if (start) {
+            for (int i = 0; i < start; ++i) {
+                tail.insert(indices[i]);
+            }
+
+            const int end1 = indices[start] + p.N - p.part_size + 1;
+            const int end2 = indices[start] - p.part_size + 1;
+            accum = 0;
+
+            // counting
+            bool found_small = false;
+            set<int>::const_iterator is = tail.begin();
+            while (!found_small && is != tail.end()) {
+                if (indices[start] > *is) {
+                    if (end2 > *is) {
+                        found_small = true;
+                    }
+                    else {
+                        ++is;
+                    }
+                }
+                else {
+                    if (end1 > *is) {
+                        found_small = true;
+                    }
+                    else {
+                        ++is;
+                    }
+                }
+            }
+
+            if (found_small) {
+                set<int>::const_iterator ib = is; ++ib;
+
+                for (; ib != tail.end(); ++ib) {
+                    if (indices[start] > *ib && end2 > *ib || indices[start] <= *ib && end1 > *ib) {
+                        const int space = *ib - *is;
+                        if (space >= p.part_size) {
+                            ++accum;
+                            is = ib;
+                        }
+                    }
+                }
+            }
+
+        }
+cout << "first accum: " << accum << endl;
+
+
+        int iter = 0;
+        while (accum < (p.part_size_num - 1)) {
+            ++iter;
+
+            pair<set<int>::iterator, bool> res = tail.insert(indices[start++]);
+            set<int>::iterator cur = res.first;
+
+            const int end1 = indices[start] + p.N - p.part_size + 1;
+            const int end2 = indices[start] - p.part_size + 1;
+
+            if (indices[start] > *cur && end2 > *cur || indices[start] <= *cur && end1 > *cur) {
+
+                set<int>::const_iterator next = cur; ++next;
+
+                if (cur == tail.begin()) {
+                    // smallest
+                    if (indices[start] > *next && end2 > *next || indices[start] <= *next && end1 > *next) {
+                        const int space = *next - *cur;
+                        if (space >= p.part_size) {
+                            ++accum;
+                        }
+                    }
+                }
+                else if (next == tail.end()) {
+                    // biggest
+                    set<int>::const_iterator prev = cur; --prev;
+                    if (indices[start] > *prev && end2 > *prev || indices[start] <= *prev && end1 > *prev) {
+                        const int space = *cur - *prev;
+                        if (space >= p.part_size) {
+                            ++accum;
+                        }
+                    }
+                }
+                else {
+                    // in between
+                    set<int>::const_iterator prev = cur; --prev;
+                    bool cond_next = indices[start] > *next && end2 > *next || indices[start] <= *next && end1 > *next;
+                    bool cond_prev = indices[start] > *prev && end2 > *prev || indices[start] <= *prev && end1 > *prev;
+
+                    bool added1 = false;
+                    bool added2 = false;
+
+                    if (cond_next) {
+                        const int space = *next - *cur;
+                        if (space >= p.part_size) {
+                            ++accum;
+                            added1 = true;
+                        }
+                    }
+                    if (cond_prev) {
+                        const int space = *cur - *prev;
+                        if (space >= p.part_size) {
+                            ++accum;
+                            added2 = true;
+                        }
+                    }
+
+                    if(added1 && added2) {
+                        --accum;
+                    }
+                }
+            }
+        }   // while
+
+
+
+cout << "Start2: " << start << endl;
+cout << "Accum: " << accum << endl;
+    
+        {
+            stringstream ss;
+            int min_beg = indices[start];
+            int min_end = (min_beg + p.part_size) % p.N;
+            print(ss, p, min_beg, min_end);
+            cout << ss.str();
+        }    
 
         int min_beg = 0, 
             min_end = 0;
 
-        for (int i = 0; i < p.N; ++i) {
+        for (int i = start; i < p.N; ++i) {
             int b = indices[i];
             int b_size = back_indices[b];
+            
+//cout << "Iter " << i << endl;
+            int full_parts = p.part_size_num - 1;
+            int full_parts_small = p.part_size_small_num;
+
             int tmp_b = b + p.part_size;
 
-            
+            while (full_parts) {
 
-            unsigned int full_parts = p.part_size_num - 1;
-            unsigned int full_parts_small = p.part_size_small_num;
+                int res = b_size - back_indices[tmp_b];
 
-/*
-            while (full_parts >= 2) {
-                int bi1 = b_size >= back_indices[tmp_b];
-                int bi2 = b_size >= back_indices[tmp_b+ps1];
-                int bi3 = b_size >= back_indices[tmp_b+small_step];
-                int bi4 = b_size >= back_indices[tmp_b+small_step+ps1];
-
-                if (bi1) {
-                    // bi1
+                if (0 <= res) {
                     full_parts -= 1;
-                    tmp_b += ps1;
-
-                    //
-                    if (bi2) {
-                        full_parts -= 1;
-                        tmp_b += ps1;
-                    }
-                    else if (bi4) {
-                        // !bi2
-                        if (0 == full_parts_small)
-                            break;
-                        full_parts_small -= 1;
-                        tmp_b += small_step;
-
-                        // bi4
-                        full_parts -= 1;
-                        tmp_b += ps1;
-                    }
-                    else {
-                        // !bi2
-                        if (0 == full_parts_small)
-                            break;
-                        full_parts_small -= 1;
-                        tmp_b += small_step;
-
-                        // !bi4
-                        if (0 == full_parts_small)
-                            break;
-                        full_parts_small -= 1;
-                        tmp_b += small_step;
-                    }
-                }
-                else if (bi3) {
-                    // !bi1
-                    if (0 == full_parts_small)
-                        break;
-                    full_parts_small -= 1;
-                    tmp_b += small_step;
-
-                    // bi3
-                    full_parts -= 1;
-                    tmp_b += ps1;
-
-                    //
-                    if (bi4) {
-                        // bi4
-                        full_parts -= 1;
-                        tmp_b += ps1;
-                    }
-                    else {
-                        // !bi4
-                        if (0 == full_parts_small)
-                            break;
-                        full_parts_small -= 1;
-                        tmp_b += small_step;
-                    }
+                    tmp_b = tmp_b + p.part_size;
                 }
                 else {
-                    // !bi1
                     if (0 == full_parts_small)
                         break;
                     full_parts_small -= 1;
-                    tmp_b += small_step;
+                    tmp_b = tmp_b + (p.part_size - 1);
+                }            
 
-                    // !bi3
-                    if (0 == full_parts_small)
-                        break;
-                    full_parts_small -= 1;
-                    tmp_b += small_step;
-                }
- 
- 
-//                if (0 > full_parts_small)
-//                    break;
-            }
-*/
-
-            /// processing the rest
-            if (0 <= full_parts_small && full_parts) {
-                while (full_parts) {
-                    if (b_size >= back_indices[tmp_b]) {
-                        --full_parts;
-                        tmp_b += p.part_size;
-                    }
-                    else {
-                        if (0 == full_parts_small)
-                            break;
-                        --full_parts_small;
-                        tmp_b += small_step;
-                    }            
-
-                }   // while true
-            }
-
-
-
+            }   // while true
+                
             // last one partition
             if (0 == full_parts) {
                 min_beg = b;
-                min_end = (min_beg + p.part_size) % p.N;; 
+                min_end = (b + p.part_size) % p.N;; 
+//cout << "Finish: " << i << endl;
                 break;
 
 //                cout << "FOUND " << i << " [" << indices[i] << "] ";
-//                print(cout, p, min_beg, min_end);
+//                print(cout, p, b, e);
             }
 //            else {
 //                cout << "not found " << i << " [" << indices[i] << "] ";
-//                print(cout, p, b, (b + p.part_size)%p.N);
+//                print(cout, p, b, e);
 //            }
-            
         }
 
 
@@ -479,4 +536,3 @@ int main(int argc, const char* argv[]) {
 
     return 0;
 }
-
