@@ -10,9 +10,9 @@
 #include <set>
 #include <sstream>
 #include <algorithm>
-#include <cmath>
-#include <cstring>
-#include <memory>
+//#include <cmath>
+//#include <cstring>
+//#include <memory>
 
 
 
@@ -65,12 +65,10 @@ int cmp(const params& p, int beg1, int beg2) {
         beg2 = (beg2 + p.num_per_INT) % p.N;
     } 
 
-    //if (p.part_size % sizeof(INT)) {
-        if ((p.ring[beg1] & p.last_mask) > (p.ring[beg2] & p.last_mask))
-            return 1;
-        else if ((p.ring[beg1] & p.last_mask) < (p.ring[beg2] & p.last_mask))
-            return -1;
-    //}
+    if ((p.ring[beg1] & p.last_mask) > (p.ring[beg2] & p.last_mask))
+        return 1;
+    else if ((p.ring[beg1] & p.last_mask) < (p.ring[beg2] & p.last_mask))
+        return -1;
 
     return 0;
 }
@@ -234,18 +232,6 @@ void solve(params& p) {
     }
     else {
 
-/*
-for (int i = 0; i < p.N; ++i) {
-    cout << "[" << i << "] ";
-    for (int j = sizeof(INT) - 1; j >= 0; --j) {
-        INT v = (INT)0x00FF & (p.ring[i] >> (j * 8));
-        cout << v;
-    }
-    cout << endl;
-}
-cout << "---" << endl;
-*/
-
 
         int indices[p.N];
         for (int i = 0; i < p.N; ++i)
@@ -283,15 +269,6 @@ cout << "---" << endl;
             back_indices[i] = back_indices[i - p.N]; 
  
 
-/*
-for (int z = 0; z < p.N; ++z) {
-    cout << z << "\t[" << indices[z] << "]\t";
-    int b = indices[z];
-    int e = (b + p.part_size) % p.N;
-    print(cout, p, b, e);
-}
-cout << endl;
-*/
         int accum = 0;
         int start = p.part_size_num - 1;
         set<int> tail;
@@ -307,8 +284,6 @@ cout << endl;
 
         }
 
-//cout << "start: " << start << "; accum: " << accum << endl;        
-
         while (accum < (p.part_size_num - 1)) {
 
             int i = 0;
@@ -317,15 +292,12 @@ cout << endl;
                tail.insert(indices[start++]);
 
             accum = count_num(p, tail, indices, start);
-//cout << "start: " << start << "; accum: " << accum << endl;
         }
 
-
 	while (accum > (p.part_size_num - 1)) {
-            set<int>::iterator it = tail.find(--start);
+            set<int>::iterator it = tail.find(indices[--start]);
             tail.erase(it);
             accum = count_num(p, tail, indices, start);
-//cout << "start: " << start << "; accum: " << accum << endl;
 	}
 
 
@@ -397,32 +369,17 @@ void prepare_params(params& p) {
 
     p.num_per_INT = p.N > sizeof(INT) ? sizeof(INT) : p.N;
     p.num_per_INT = p.part_size > p.num_per_INT ? p.num_per_INT : p.part_size;
-//cout << "Num per INT: " << p.num_per_INT << endl;
 
     int shift = sizeof(INT) - p.part_size;
     INT tmp_mask = p.part_size <= sizeof(INT) ? ~((~INT(0) >> shift) << shift) : ~INT(0);
     shift = (sizeof(INT) - p.part_size % sizeof(INT)) * 8;
-//cout << "shift " << shift << " so(" << sizeof(INT) << ")" << endl;
    
     p.last_mask = (tmp_mask >> shift) << shift;
-//cout << "Last mask: ";
-//for (int i = sizeof(INT)-1; i >= 0; --i) {
-//    INT v = (INT)0xFF & (p.last_mask >> (i * 8));
-//    cout << v;
-//}
-//cout << endl;
 
     shift = p.part_size <= sizeof(INT) ? (p.part_size - 1) * 8 : (sizeof(INT) - 1) * 8;
     p.first_mask = INT(0xFF) << shift; 
-//cout << "First mask: ";
-//for (int i = sizeof(INT)-1; i >= 0; --i) {
-//    INT v = (INT)0xFF & (p.first_mask >> (i * 8));
-//    cout << v;
-//}
-//cout << endl;
 
 
-    //p.ring = new INT[p.N];
     for (int i = 0; i < p.N; ++i)
         p.ring[i] = 0;
     
@@ -459,22 +416,6 @@ int main(int argc, const char* argv[]) {
     }
 
     solve(p);
-/*
-    for (int i = 0; i < p.N; ++i) {
-        cout << "[" << i << "] ";
-        for (int j = sizeof(INT) - 1; j >= 0; --j) {
-            INT v = (INT)0x00FF & (p.ring[i] >> (j * 8));
-            cout << v;
-        }
-        cout << endl;
-    }
-    cout << "Last mask: ";
-    for (int j = sizeof(INT) - 1; j >= 0; --j) {
-        INT v = (INT)0x00FF & (p.last_mask >> (j * 8));
-        cout << v;
-    }
-    cout << endl;
-*/
 
 
     return 0;
