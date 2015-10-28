@@ -119,6 +119,176 @@ private:
 
 
 
+template<typename T, typename LESS>
+class heap_t {
+public:
+    typedef pair<int, T> item_t;
+    typedef vector<item_t> storage_t;
+
+private:
+    storage_t storage;
+    vector<int> indices;
+    LESS cmp_less;
+
+public:
+    heap_t(LESS less, size_t reserve=0) :
+        storage(),
+        indices(),
+        cmp_less(less)
+    {
+        if (reserve) {
+            storage.reserve(reserve);
+            indices.reserve(reserve);
+        }
+    }
+
+    int push_heap(int val) {
+        int id = indices.size();
+        int i = storage.size();
+
+        storage.push_back(make_pair(id, val));
+        indices.push_back(i);
+
+        heapify_up(i);
+
+        return id;
+    } 
+
+    T& top() {
+        return storage[0].second;
+    }
+
+    void pop_heap() {
+        storage[0] = storage[storage.size()-1];
+        storage.pop_back();
+
+        indices[storage[0].first] = 0; 
+
+        heapify_down(0);
+    }
+
+    void change_key(int id, T val) {
+        int i = indices[id];
+        if (cmp_less(storage[i].second, val)) { 
+            storage[i].second = val;
+            heapify_down(i);
+        }
+        else {
+            storage[i].second = val;
+            heapify_up(i);
+        }
+    }
+
+private:
+    void heapify_up(int i) {
+        if (0 == i)
+            return;
+
+        int parity = i & 1;
+        int parent = (i - (2 - parity)) / 2;
+
+        if (cmp_less(storage[i].second, storage[parent].second)) {
+            // swap
+            item_t tmp = storage[parent];
+            storage[parent] = storage[i];
+            storage[i] = tmp;
+
+            indices[storage[parent].first] = parent;
+            indices[storage[i].first] = i;
+
+            heapify_up(parent);
+        }
+    }
+
+    void heapify_down(int i) {
+//        if (i == storage.size() - 1)
+//            return;
+
+        int ch1 = i * 2 + 1;
+        int ch2 = i * 2 + 2;
+        int ch = ch2;
+
+        if (storage.size() > ch1 && storage.size() > ch1) {
+            if (cmp_less(storage[ch1].second, storage[ch2].second)) {
+                ch = ch1;
+            }
+            else {
+                ch = ch2;
+            }
+        }
+        else if (storage.size() > ch1) {
+            ch = ch1;
+        }
+        else if (storage.size() > ch2) {
+            ch = ch2;
+        }
+        else
+            return;
+
+
+        if (cmp_less(storage[i].second, storage[ch].second)) {
+            // swap
+            item_t tmp = storage[ch];
+            storage[ch] = storage[i];
+            storage[i] =  tmp;
+
+            indices[storage[ch].first] = ch;
+            indices[storage[i].first] = i;
+
+            heapify_down(ch);
+        }
+    }
+
+};
+
+template <typename T>
+struct node_less {
+    const T& p_;
+    node_less(const T& p) :
+        p_(p)
+    {}
+
+    bool operator() (int i1, int i2) {
+        bool res = false;
+
+        if (p_.dist[i1] == INF && p_.dist[i2] == INF)
+            res = false;
+        else if (p_.dist[i1] == INF)
+            res = false;
+        else if (p_.dist[i2] == INF)
+            res = true;
+        else
+            res = p_.dist[i1] < p_.dist[i2];
+
+        return res;
+    }
+};
+
+template <typename T>
+struct node_greater {
+    const T& p_;
+    node_greater(const T& p) :
+        p_(p)
+    {}
+
+    bool operator() (int i1, int i2) {
+        bool res = false;
+
+        if (p_.dist[i1] == INF && p_.dist[i2] == INF)
+            res = false;
+        else if (p_.dist[i1] == INF)
+            res = true;
+        else if (p_.dist[i2] == INF)
+            res = false;
+        else
+            res = p_.dist[i1] > p_.dist[i2];
+
+        return res;
+    }
+};
+
+
+
 
 
 struct params {
@@ -133,31 +303,25 @@ struct params {
     vector<char> labels;
     vector<const Tri::tri_node_t*> path_data;
 
-    vector<int> heap;
-};
+    heap_t<int, node_less<params> > heap;
+    //heap_t<int, node_greater<params> > heap;
 
-
-struct node_less {
-    const params& p_;
-    node_less(const params& p) :
-        p_(p)
+    
+    params() :
+        s(""),
+        subs(),
+        N(0),
+        M(0),
+        graph(),
+        dist(),
+        labels(),
+        path_data(),
+        heap(node_less<params>(*this), 1024)
+        //heap(node_greater<params>(*this), 1024)
     {}
-
-    bool operator() (int i1, int i2) {
-        bool res = false;
-
-        if (p_.dist[i1] == INF && p_.dist[i2] == INF)
-            res = false;
-        else if (p_.dist[i1] == INF)
-            res = false;
-        else if (p_.dist[i2] == INF)
-            res = true;
-        else 
-            res = p_.dist[i1] < p_.dist[i2];
-
-        return !res; // for min heap
-    }
 };
+
+
 
 
 
@@ -184,10 +348,8 @@ void init_graph(params& p) {
 
     p.path_data.assign(p.N, (const Tri::tri_node_t*)NULL);
 
-    p.heap.reserve(p.N);
     for (int i = 0; i < p.N; ++i) {
-        p.heap.push_back(i);
-        push_heap(p.heap.begin(), p.heap.end(), node_less(p));
+        p.heap.push_heap(p.dist[i]);
     }
 }
 
@@ -214,9 +376,12 @@ int solve(params& p) {
     }
 */
 
-    pop_heap(p.heap.begin(), p.heap.end());
-    int v = p.heap[p.heap.size()-1];
-    
+    int v = p.heap.top();
+    p.heap.pop_heap();
+
+    p.dist[1] = 15;
+    p.heap.change_key(1, 15);
+    v = p.heap.top();
 
     return p.dist[v];
 }
