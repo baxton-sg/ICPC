@@ -36,7 +36,7 @@ public:
                 if (letters[i]) 
                     delete letters[i];
         }
-    };
+    }; 
 
 
 
