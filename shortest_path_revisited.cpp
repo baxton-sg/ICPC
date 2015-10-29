@@ -252,49 +252,23 @@ private:
 
 template <typename T>
 struct node_less {
-    const T& p_;
-    node_less(const T& p) :
-        p_(p)
-    {}
 
-    bool operator() (int i1, int i2) {
+    bool operator() (const T& d1, const T& d2) {
         bool res = false;
 
-        if (p_.dist[i1] == INF && p_.dist[i2] == INF)
+        if (d1 == INF && d2 == INF)
             res = false;
-        else if (p_.dist[i1] == INF)
+        else if (d1 == INF)
             res = false;
-        else if (p_.dist[i2] == INF)
+        else if (d2 == INF)
             res = true;
         else
-            res = p_.dist[i1] < p_.dist[i2];
+            res = d1 < d2;
 
         return res;
     }
 };
 
-template <typename T>
-struct node_greater {
-    const T& p_;
-    node_greater(const T& p) :
-        p_(p)
-    {}
-
-    bool operator() (int i1, int i2) {
-        bool res = false;
-
-        if (p_.dist[i1] == INF && p_.dist[i2] == INF)
-            res = false;
-        else if (p_.dist[i1] == INF)
-            res = true;
-        else if (p_.dist[i2] == INF)
-            res = false;
-        else
-            res = p_.dist[i1] > p_.dist[i2];
-
-        return res;
-    }
-};
 
 
 
@@ -314,8 +288,7 @@ struct params {
  
     vector<int> visited;
 
-    heap_t<int, node_less<params> > heap;
-    //heap_t<int, node_greater<params> > heap;
+    heap_t<int, node_less<int> > heap;
 
 
     
@@ -329,8 +302,7 @@ struct params {
         labels(),
         path_data(),
         visited(),
-        heap(node_less<params>(*this), 1024)
-        //heap(node_greater<params>(*this), 1024)
+        heap(node_less<int>(), 1024)
     {}
 };
 
