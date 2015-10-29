@@ -142,7 +142,7 @@ public:
         }
     }
 
-    int push_heap(int val) {
+    int push_heap(T val) {
         int id = indices.size();
         int i = storage.size();
 
@@ -154,8 +154,16 @@ public:
         return id;
     } 
 
+    int size() const {
+        return storage.size();
+    }
+
     T& top() {
         return storage[0].second;
+    }
+
+    int top_id() const {
+        return storage[0].first;
     }
 
     void pop_heap() {
@@ -201,14 +209,12 @@ private:
     }
 
     void heapify_down(int i) {
-//        if (i == storage.size() - 1)
-//            return;
 
         int ch1 = i * 2 + 1;
         int ch2 = i * 2 + 2;
         int ch = ch2;
 
-        if (storage.size() > ch1 && storage.size() > ch1) {
+        if (storage.size() > ch1 && storage.size() > ch2) {
             if (cmp_less(storage[ch1].second, storage[ch2].second)) {
                 ch = ch1;
             }
@@ -222,9 +228,9 @@ private:
         else if (storage.size() > ch2) {
             ch = ch2;
         }
-        else
+        else {
             return;
-
+        }
 
         if (cmp_less(storage[i].second, storage[ch].second)) {
             // swap
@@ -302,9 +308,12 @@ struct params {
     vector<int> dist;
     vector<char> labels;
     vector<const Tri::tri_node_t*> path_data;
+ 
+    vector<int> visited;
 
     heap_t<int, node_less<params> > heap;
     //heap_t<int, node_greater<params> > heap;
+
 
     
     params() :
@@ -316,6 +325,7 @@ struct params {
         dist(),
         labels(),
         path_data(),
+        visited(),
         heap(node_less<params>(*this), 1024)
         //heap(node_greater<params>(*this), 1024)
     {}
@@ -339,7 +349,7 @@ void get_substrings(params& p) {
 
 
 void init_graph(params& p) {
-    p.graph.assign(p.N * p.N, 0);
+    p.graph.assign(p.N * p.N, INF);
 
     p.dist.assign(p.N, INF);
     p.dist[0] = 0;
@@ -348,8 +358,10 @@ void init_graph(params& p) {
 
     p.path_data.assign(p.N, (const Tri::tri_node_t*)NULL);
 
+    p.visited.assign(p.N, 0);
+
     for (int i = 0; i < p.N; ++i) {
-        p.heap.push_heap(p.dist[i]);
+        int id = p.heap.push_heap(p.dist[i]);
     }
 }
 
@@ -361,6 +373,11 @@ void add_edge(params& p, int x, int y, int z, char c) {
     int idx = x + y * p.N;
     p.graph[idx] = z;
     p.labels[idx] = c;
+
+    idx = y + x * p.N;
+    p.graph[idx] = z;
+    p.labels[idx] = c;
+
 }
 
 
@@ -368,22 +385,68 @@ void add_edge(params& p, int x, int y, int z, char c) {
 
 int solve(params& p) {
 
-/*
+#if defined DEBUG
+    cout << "in heap: " << p.heap.size() << endl;
+#endif
+
     while (p.heap.size()) {
-        int cur = pop_heap(p.heap
+        int cur = p.heap.top();
+        int id = p.heap.top_id();
+        p.heap.pop_heap();
 
+        p.visited[id] = 1;
 
+#if defined DEBUG
+        cout << "fetched #" << id << endl;
+#endif
+
+        if (id == p.N-1)
+            break;
+
+        int row = id * p.N;
+        for (int ch = 0; ch < p.N; ++ch) {
+
+#if defined DEBUG
+            cout << "   edge to #" << ch << " cur W=" << p.dist[ch];
+#endif
+            if (p.visited[ch] || INF == p.graph[row + ch]) {
+
+#if defined DEBUG
+                cout << endl;
+#endif
+                continue; 
+            }
+
+            const Tri::tri_node_t* cur_path = p.path_data[id];
+
+            char c = p.labels[row  + ch];
+            const Tri::tri_node_t* next_path = p.subs.get_next(cur_path, c);
+
+            if (!next_path) {
+
+#if defined DEBUG
+                cout << " no such path '" << c << "'" << endl;
+#endif
+                continue;
+            }
+
+            p.path_data[ch] = next_path;
+
+            int dist = p.dist[id] + p.graph[row + ch] * next_path->count;
+
+#if defined DEBUG
+            cout << " W=" << dist << " cur W=" << p.dist[ch] << endl;
+#endif
+            if (p.dist[ch] == INF || p.dist[ch] > dist) {
+                p.dist[ch] = dist;
+                p.heap.change_key(ch, dist);
+            }
+        }
     }
-*/
 
-    int v = p.heap.top();
-    p.heap.pop_heap();
 
-    p.dist[1] = 15;
-    p.heap.change_key(1, 15);
-    v = p.heap.top();
 
-    return p.dist[v];
+    return p.dist[p.N-1];
 }
 
 
