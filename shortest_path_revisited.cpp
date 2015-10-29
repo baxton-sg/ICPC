@@ -10,6 +10,9 @@
 using namespace std;
 
 
+#define DEBUG
+
+
 
 const int INF = -1;
 
@@ -386,7 +389,7 @@ void add_edge(params& p, int x, int y, int z, char c) {
 int solve(params& p) {
 
 #if defined DEBUG
-    cout << "in heap: " << p.heap.size() << endl;
+    cerr << "in heap: " << p.heap.size() << endl;
 #endif
 
     while (p.heap.size()) {
@@ -397,7 +400,7 @@ int solve(params& p) {
         p.visited[id] = 1;
 
 #if defined DEBUG
-        cout << "fetched #" << id << endl;
+        cerr << "fetched #" << id << endl;
 #endif
 
         if (id == p.N-1)
@@ -407,12 +410,12 @@ int solve(params& p) {
         for (int ch = 0; ch < p.N; ++ch) {
 
 #if defined DEBUG
-            cout << "   edge to #" << ch << " cur W=" << p.dist[ch];
+            cerr << "   edge to #" << ch << " cur W=" << p.dist[ch];
 #endif
             if (p.visited[ch] || INF == p.graph[row + ch]) {
 
 #if defined DEBUG
-                cout << endl;
+                cerr << endl;
 #endif
                 continue; 
             }
@@ -425,21 +428,21 @@ int solve(params& p) {
             if (!next_path) {
 
 #if defined DEBUG
-                cout << " no such path '" << c << "'" << endl;
+                cerr << " no such path '" << c << "'" << endl;
 #endif
                 continue;
             }
 
-            p.path_data[ch] = next_path;
 
             int dist = p.dist[id] + p.graph[row + ch] * next_path->count;
 
 #if defined DEBUG
-            cout << " W=" << dist << " cur W=" << p.dist[ch] << endl;
+            cerr << " W=" << dist << " cur W=" << p.dist[ch] << endl;
 #endif
             if (p.dist[ch] == INF || p.dist[ch] > dist) {
                 p.dist[ch] = dist;
                 p.heap.change_key(ch, dist);
+                p.path_data[ch] = next_path;
             }
         }
     }
@@ -472,7 +475,7 @@ int main(int argc, const char* argv[]) {
     get_substrings(p);
 
 #if defined DEBUG
-    p.subs.print(cout);
+    p.subs.print(cerr);
 #endif
 
     int result = solve(p);
@@ -481,4 +484,4 @@ int main(int argc, const char* argv[]) {
 
 
     return 0;
-} 
+}
