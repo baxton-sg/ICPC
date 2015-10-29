@@ -12,7 +12,7 @@ using namespace std;
 
 typedef long long INT;
 
-//#define DEBUG
+#define DEBUG
 
 
 
@@ -286,7 +286,7 @@ struct params {
     vector<vector<int> > graph;
     vector<INT> dist;
     vector<vector<char> > labels;
-    vector<const Tri::tri_node_t*> path_data;
+    vector<vector<pair<int, const Tri::tri_node_t*> > > path_data;
  
     vector<int> visited;
 
@@ -333,7 +333,8 @@ void init_graph(params& p) {
 
     p.labels.assign(p.N * p.N, vector<char>());
 
-    p.path_data.assign(p.N, (const Tri::tri_node_t*)NULL);
+    p.path_data.assign(p.N, vector<pair<int, const Tri::tri_node_t*> >());
+    p.path_data[0].push_back(make_pair(0, (const Tri::tri_node_t*)NULL));
 
     p.visited.assign(p.N, 0);
 
@@ -394,33 +395,36 @@ int solve(params& p) {
                 continue; 
             }
 
-            const Tri::tri_node_t* cur_path = p.path_data[id];
+            for (int pd = 0; pd < p.path_data[id].size(); ++pd) {
+                int cur_dist = p.path_data[id][pd].first;
+                const Tri::tri_node_t* cur_path = p.path_data[id][pd].second;
 
 
-            for (int e = 0; e < p.graph[row + ch].size(); ++e) {
-                char c = p.labels[row  + ch][e];
-                const Tri::tri_node_t* next_path = p.subs.get_next(cur_path, c);
+                for (int e = 0; e < p.graph[row + ch].size(); ++e) {
+                    char c = p.labels[row  + ch][e];
+                    const Tri::tri_node_t* next_path = p.subs.get_next(cur_path, c);
 
-                if (!next_path) {
-
-#if defined DEBUG
-                    cerr << " no such path '" << c << "'" << endl;
-#endif
-                    continue;
-                }
-
-
-                INT dist = p.dist[id] + INT(p.graph[row + ch][e]) * next_path->count;
+                    if (!next_path) {
 
 #if defined DEBUG
-                cerr << " W=" << dist << " cur W=" << p.dist[ch] << endl;
+                        cerr << " no such path '" << c << "'" << endl;
 #endif
-                if (p.dist[ch] == INF || p.dist[ch] > dist) {
-                    p.dist[ch] = dist;
-                    p.heap.change_key(ch, dist);
-                    p.path_data[ch] = next_path;
-                }
-            }   // edges
+                        continue;
+                    }
+
+
+                    INT dist = cur_dist + INT(p.graph[row + ch][e]) * next_path->count;
+
+#if defined DEBUG
+                    cerr << " W=" << dist << " cur W=" << p.dist[ch] << endl;
+#endif
+                    if (p.dist[ch] == INF || p.dist[ch] > dist) {
+                        p.dist[ch] = dist;
+                        p.heap.change_key(ch, dist);
+                    }
+                    p.path_data[ch].push_back(make_pair(dist, next_path));
+                }   // edges
+            }   // pathes
         }
     }
 
