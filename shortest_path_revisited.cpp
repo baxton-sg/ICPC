@@ -10,7 +10,9 @@
 using namespace std;
 
 
-#define DEBUG
+typedef long long INT;
+
+//#define DEBUG
 
 
 
@@ -281,14 +283,14 @@ struct params {
     int N;
     int M;
 
-    vector<int> graph;
-    vector<int> dist;
-    vector<char> labels;
+    vector<vector<int> > graph;
+    vector<INT> dist;
+    vector<vector<char> > labels;
     vector<const Tri::tri_node_t*> path_data;
  
     vector<int> visited;
 
-    heap_t<int, node_less<int> > heap;
+    heap_t<INT, node_less<INT> > heap;
 
 
     
@@ -302,7 +304,7 @@ struct params {
         labels(),
         path_data(),
         visited(),
-        heap(node_less<int>(), 1024)
+        heap(node_less<INT>(), 1024)
     {}
 };
 
@@ -324,12 +326,12 @@ void get_substrings(params& p) {
 
 
 void init_graph(params& p) {
-    p.graph.assign(p.N * p.N, INF);
+    p.graph.assign(p.N * p.N, vector<int>());
 
     p.dist.assign(p.N, INF);
     p.dist[0] = 0;
 
-    p.labels.assign(p.N * p.N, 0);
+    p.labels.assign(p.N * p.N, vector<char>());
 
     p.path_data.assign(p.N, (const Tri::tri_node_t*)NULL);
 
@@ -346,12 +348,12 @@ void add_edge(params& p, int x, int y, int z, char c) {
     --y;
 
     int idx = x + y * p.N;
-    p.graph[idx] = z;
-    p.labels[idx] = c;
+    p.graph[idx].push_back(z);
+    p.labels[idx].push_back(c);
 
     idx = y + x * p.N;
-    p.graph[idx] = z;
-    p.labels[idx] = c;
+    p.graph[idx].push_back(z);
+    p.labels[idx].push_back(c);
 
 }
 
@@ -384,7 +386,7 @@ int solve(params& p) {
 #if defined DEBUG
             cerr << "   edge to #" << ch << " cur W=" << p.dist[ch];
 #endif
-            if (p.visited[ch] || INF == p.graph[row + ch]) {
+            if (p.visited[ch] || 0 == p.graph[row + ch].size()) {
 
 #if defined DEBUG
                 cerr << endl;
@@ -394,28 +396,31 @@ int solve(params& p) {
 
             const Tri::tri_node_t* cur_path = p.path_data[id];
 
-            char c = p.labels[row  + ch];
-            const Tri::tri_node_t* next_path = p.subs.get_next(cur_path, c);
 
-            if (!next_path) {
+            for (int e = 0; e < p.graph[row + ch].size(); ++e) {
+                char c = p.labels[row  + ch][e];
+                const Tri::tri_node_t* next_path = p.subs.get_next(cur_path, c);
 
-#if defined DEBUG
-                cerr << " no such path '" << c << "'" << endl;
-#endif
-                continue;
-            }
-
-
-            int dist = p.dist[id] + p.graph[row + ch] * next_path->count;
+                if (!next_path) {
 
 #if defined DEBUG
-            cerr << " W=" << dist << " cur W=" << p.dist[ch] << endl;
+                    cerr << " no such path '" << c << "'" << endl;
 #endif
-            if (p.dist[ch] == INF || p.dist[ch] > dist) {
-                p.dist[ch] = dist;
-                p.heap.change_key(ch, dist);
-                p.path_data[ch] = next_path;
-            }
+                    continue;
+                }
+
+
+                INT dist = p.dist[id] + INT(p.graph[row + ch][e]) * next_path->count;
+
+#if defined DEBUG
+                cerr << " W=" << dist << " cur W=" << p.dist[ch] << endl;
+#endif
+                if (p.dist[ch] == INF || p.dist[ch] > dist) {
+                    p.dist[ch] = dist;
+                    p.heap.change_key(ch, dist);
+                    p.path_data[ch] = next_path;
+                }
+            }   // edges
         }
     }
 
