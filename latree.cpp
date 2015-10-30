@@ -31,7 +31,9 @@ struct path_t {
         start(s),
         finish(f),
         path()
-    {}
+    {
+        path.reserve(20000);
+    }
 };
 
 
@@ -48,8 +50,15 @@ struct params {
 
 
 void init_params(params& p) {
-    p.edges.assign(p.N, vector<edge_t>());
-    p.pathes.assign(p.N, vector<path_t>());
+    vector<edge_t> tmp_edge;
+    vector<path_t> tmp_path;
+
+    tmp_edge.reserve(1000);
+    tmp_path.reserve(20000);
+
+ 
+    p.edges.assign(p.N, tmp_edge);
+    p.pathes.assign(p.N, tmp_path);
 
 }
 
@@ -63,13 +72,13 @@ void add_edge(params& p, int a, int b, char c) {
 
 
 path_t* get_from_memo(params& p, int orig, int node) {
-
+/*
     for (int n = 0; n < p.pathes[node].size(); ++n) {
-        if (p.pathes[node][n].orig == orig) { 
+        if (p.pathes[node][n].orig != orig) { 
             return &p.pathes[node][n];
         }
     }
-
+*/
     return NULL;
 }
 
@@ -110,7 +119,6 @@ void get_best_path(params& p, path_t& start_point) {
         return;
     }
     
-
     vector<edge_t*> best_edges;
 
     for (int e = 0; e < p.edges[n].size(); ++e) {
@@ -133,10 +141,15 @@ void get_best_path(params& p, path_t& start_point) {
 
     path_t best_path(NONE, NONE, NONE);
     char best_c = NONE;
+
+    auto_ptr<path_t> pp (new path_t(NONE, NONE, NONE));
     
     for (int e = 0; e < best_edges.size(); ++e) { 
-        auto_ptr<path_t> pp (new path_t(n, best_edges[e]->end, NONE));
         path_t& tmp = *pp.get();
+        tmp.orig = n;
+        tmp.start = best_edges[e]->end;
+        tmp.finish = NONE;
+
         get_best_path(p, tmp); 
 
         // remember what I've just found
@@ -162,10 +175,15 @@ void get_best_path(params& p, path_t& start_point) {
 
 void solve(params& p) {
 
+    auto_ptr<path_t> pp(new path_t(NONE, 0, NONE));
+
     for (int n = 0; n < p.N; ++n) {
 
     
-        path_t tmp(NONE, n, NONE);
+        path_t& tmp = *pp.get();
+        tmp.orig = NONE;
+        tmp.start = n;
+        tmp.finish = NONE;
         get_best_path(p, tmp); 
 
 
