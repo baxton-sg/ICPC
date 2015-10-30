@@ -23,11 +23,13 @@ struct path_t {
     int orig;
     int start;
     int finish;
+    vector<char> path;
 
     path_t(int o, int s, int f) :
         orig(o),
         start(s),
-        finish(f)
+        finish(f),
+        path()
     {}
 };
 
@@ -73,35 +75,29 @@ int get_from_memo(params& p, int orig, int node) {
 }
 
 
-int cmp_path(const params& p, int cur1, int finish1, int cur2, int finish2) {
+int cmp_path(const path_t& p1, const path_t& p2) {
+    int size1 = p1.path.size();
+    int size2 = p2.path.size();
 
-    if (cur1 == finish1 && cur2 == finish2)
-        return 0;
-    else if (cur1 == finish1)
-        return -1;
-    else if (cur2 == finish2)
+    int i1 = 0;
+    int i2 = 0;
+
+    while (i1 < size1 && i2 < size2) {
+        if (p1.path[i1] > p2.path[i2])
+            return 1;
+        else if (p1.path[i1] < p2.path[i2])
+            return -1;
+        ++i1;
+        ++i2;
+    }
+
+    if (i1 < size1)
         return 1;
 
-    const edge_t* edge1 = NULL;
-    const edge_t* edge2 = NULL;
+    else if (i2 < size2)
+        return -1;
 
-    for (int e = 0; e < p.edges[cur1].size(); ++e) {
-        if (edge1 == NULL || edge1->c < p.edges[cur1][e].c)
-            edge1 = &p.edges[cur1][e];
-    }
-
-    for (int e = 0; e < p.edges[cur2].size(); ++e) {
-        if (edge2 == NULL || edge2->c < p.edges[cur2][e].c)
-            edge2 = &p.edges[cur2][e];
-    }
-
-//    if (edge1 && edge2) {
-        if (edge1->c == edge2->c)
-            return cmp_path(p, edge1->end, finish1, edge2->end, finish2);
-        return edge1->c - edge2->c;
-//    }   
-
-    return finish1 - finish2;
+    return p1.finish - p2.finish;
 }
 
 
@@ -140,20 +136,23 @@ void get_best_path(params& p, path_t& start_point) {
     
     for (int e = 0; e < best_edges.size(); ++e) { 
         path_t tmp(n, best_edges[e]->end, NONE);
+        tmp.path.push_back(best_edges[e]->c);
         get_best_path(p, tmp); 
 
         // remember what I've just found
         p.pathes[best_edges[e]->end].push_back(tmp);
 
-        if (best_path.finish == NONE || 0 > cmp_path(p, best_path.start, best_path.finish, tmp.start, tmp.finish)) {
+        if (best_path.finish == NONE || 0 > cmp_path(best_path, tmp)) {
             best_path = tmp;
         }
     } 
 
     if (best_path.finish == NONE)
         start_point.finish = n;
-    else
+    else {
+        start_point.path.insert(start_point.path.end(), best_path.path.begin(), best_path.path.end());
         start_point.finish = best_path.finish;
+    }
 
 }
 
@@ -182,18 +181,19 @@ void solve(params& p) {
     
         for (int e = 0; e < best_edges.size(); ++e) { 
             path_t tmp(n, best_edges[e]->end, NONE);
+            tmp.path.push_back(best_edges[e]->c);
             get_best_path(p, tmp); 
 
             // remember what I've just found
             p.pathes[best_edges[e]->end].push_back(tmp);
 
-            if (best_path.finish == NONE || 0 > cmp_path(p, best_path.start, best_path.finish, tmp.start, tmp.finish)) {
+            if (best_path.finish == NONE || 0 > cmp_path(best_path, tmp)) {
                 best_path = tmp;
             }
         } 
 
         // output the result
-        cout << (best_path.finish + 1);
+        cout << (best_path.finish + 1) << " ";
     }
 
     cout << endl;
