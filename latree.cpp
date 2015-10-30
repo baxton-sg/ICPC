@@ -61,17 +61,15 @@ void add_edge(params& p, int a, int b, char c) {
 }
 
 
-int get_from_memo(params& p, int orig, int node) {
-    int finish = NONE;
+path_t* get_from_memo(params& p, int orig, int node) {
 
     for (int n = 0; n < p.pathes[node].size(); ++n) {
         if (p.pathes[node][n].orig == orig) { 
-            finish = p.pathes[node][n].finish;
-            break;
+            return &p.pathes[node][n];
         }
     }
 
-    return finish;
+    return NULL;
 }
 
 
@@ -105,9 +103,9 @@ void get_best_path(params& p, path_t& start_point) {
     int n = start_point.start;
 
     // try memo
-    int finish = get_from_memo(p, start_point.orig, n);
-    if (NONE != finish) {
-        start_point.finish = finish;
+    path_t* path_memo = get_from_memo(p, start_point.orig, n);
+    if (NULL != path_memo) {
+        start_point = *path_memo;
         return;
     }
     
@@ -133,10 +131,10 @@ void get_best_path(params& p, path_t& start_point) {
     }
 
     path_t best_path(NONE, NONE, NONE);
+    char best_c = NONE;
     
     for (int e = 0; e < best_edges.size(); ++e) { 
         path_t tmp(n, best_edges[e]->end, NONE);
-        tmp.path.push_back(best_edges[e]->c);
         get_best_path(p, tmp); 
 
         // remember what I've just found
@@ -144,12 +142,14 @@ void get_best_path(params& p, path_t& start_point) {
 
         if (best_path.finish == NONE || 0 > cmp_path(best_path, tmp)) {
             best_path = tmp;
+            best_c = best_edges[e]->c;
         }
     } 
 
     if (best_path.finish == NONE)
         start_point.finish = n;
     else {
+        start_point.path.push_back(best_c);
         start_point.path.insert(start_point.path.end(), best_path.path.begin(), best_path.path.end());
         start_point.finish = best_path.finish;
     }
@@ -181,7 +181,6 @@ void solve(params& p) {
     
         for (int e = 0; e < best_edges.size(); ++e) { 
             path_t tmp(n, best_edges[e]->end, NONE);
-            tmp.path.push_back(best_edges[e]->c);
             get_best_path(p, tmp); 
 
             // remember what I've just found
@@ -193,6 +192,8 @@ void solve(params& p) {
         } 
 
         // output the result
+        if (best_path.finish == NONE)
+            best_path.finish = 0;
         cout << (best_path.finish + 1) << " ";
     }
 
