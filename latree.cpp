@@ -4,194 +4,94 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <algorithm>
+#include <map>
 
 
 using namespace std;
 
 
+
+const int MAX_N = 20000;
+const int KEY_SIZE = MAX_N - 1;
+
+
+typedef char(key_t)[KEY_SIZE];
+
+
+
+
+void init_key(key_t& k) {
+    for (int i = 0; i < KEY_SIZE; ++i)
+        k[i] = 0;
+}
+
+void add_letter(char c, key_t& dst, const key_t& src) {
+    dst[KEY_SIZE-1] = c;
+    for (int i = KEY_SIZE-2; i >= 0; --i)
+        dst[i] = src[i+1];
+}
+
+
+int cmp_key(const key_t& k1, const key_t& k2) {
+    for (int i = KEY_SIZE-1; i >= 0; --i) {
+        if (k1[i] > k2[i])
+            return 1;
+        else if (k1[i] < k2[i])
+            return -1;
+        else if (k1[i] == 0 && k2[i] == 0)
+            break;
+    }
+
+    return 0;
+}
+
+
+
 struct edge_t {
+    int beg;
     int end;
     char c;
 
-    edge_t(int e, char ch) :
+    edge_t(int b, int e, char ch) :
+        beg(b),
         end(e),
         c(ch)
     {}
 };
 
 
-struct path_t {
-    int orig;
-    int start;
-    int finish;
-    vector<char> path;
 
-    path_t(int o, int s, int f) :
-        orig(o),
-        start(s),
-        finish(f),
-        path()
-    {
-        path.reserve(20000);
-    }
-};
-
-
-const int NONE = -1;
 
 
 
 struct params {
     int N;
-    vector<vector<edge_t> > edges;
 
-    vector<vector<path_t> > pathes;
+    vector<edge_t> edges;
+    vector<int> edges_num;
 };
 
 
 void init_params(params& p) {
-    vector<edge_t> tmp_edge;
-    vector<path_t> tmp_path;
-
-    tmp_edge.reserve(1000);
-    tmp_path.reserve(20000);
-
- 
-    p.edges.assign(p.N, tmp_edge);
-    p.pathes.assign(p.N, tmp_path);
-
+    edges.reserve(KEY_SIZE);
+    edges_num.assign(p.N, 0);
 }
 
 
 void add_edge(params& p, int a, int b, char c) {
     --a;
     --b;
-    p.edges[a].push_back(edge_t(b, c));
-    p.edges[b].push_back(edge_t(a, c));
+    p.edges_num[a] += 1;
+    p.edges_num[b] += 1;
 }
 
 
-path_t* get_from_memo(params& p, int orig, int node) {
-/*
-    for (int n = 0; n < p.pathes[node].size(); ++n) {
-        if (p.pathes[node][n].orig != orig) { 
-            return &p.pathes[node][n];
-        }
-    }
-*/
-    return NULL;
-}
-
-
-int cmp_path(const path_t& p1, const path_t& p2) {
-    int size1 = p1.path.size();
-    int size2 = p2.path.size();
-
-    int i1 = 0;
-    int i2 = 0;
-
-    while (i1 < size1 && i2 < size2) {
-        if (p1.path[i1] > p2.path[i2])
-            return 1;
-        else if (p1.path[i1] < p2.path[i2])
-            return -1;
-        ++i1;
-        ++i2;
-    }
-
-    if (i1 < size1)
-        return 1;
-
-    else if (i2 < size2)
-        return -1;
-
-    return p1.finish - p2.finish;
-}
-
-
-void get_best_path(params& p, path_t& start_point) {
-    int n = start_point.start;
-
-    // try memo
-    path_t* path_memo = get_from_memo(p, start_point.orig, n);
-    if (NULL != path_memo) {
-        start_point = *path_memo;
-        return;
-    }
-    
-    vector<edge_t*> best_edges;
-
-    for (int e = 0; e < p.edges[n].size(); ++e) {
-        edge_t& edge = p.edges[n][e];
-
-        if (start_point.orig == edge.end)
-            continue;
-
-        if (!best_edges.size()) {
-            best_edges.push_back(&edge);
-        }
-        else if (best_edges[0]->c == edge.c) {
-            best_edges.push_back(&edge);
-        }
-        else if (best_edges[0]->c < edge.c) {
-            best_edges.clear();
-            best_edges.push_back(&edge);
-        }
-    }
-
-    path_t best_path(NONE, NONE, NONE);
-    char best_c = NONE;
-
-    auto_ptr<path_t> pp (new path_t(NONE, NONE, NONE));
-    
-    for (int e = 0; e < best_edges.size(); ++e) { 
-        path_t& tmp = *pp.get();
-        tmp.orig = n;
-        tmp.start = best_edges[e]->end;
-        tmp.finish = NONE;
-
-        get_best_path(p, tmp); 
-
-        // remember what I've just found
-        p.pathes[best_edges[e]->end].push_back(tmp);
-
-        if (best_path.finish == NONE || 0 > cmp_path(best_path, tmp)) {
-            best_path = tmp;
-            best_c = best_edges[e]->c;
-        }
-    } 
-
-    if (best_path.finish == NONE)
-        start_point.finish = n;
-    else {
-        start_point.path.push_back(best_c);
-        start_point.path.insert(start_point.path.end(), best_path.path.begin(), best_path.path.end());
-        start_point.finish = best_path.finish;
-    }
-
-}
 
 
 
 void solve(params& p) {
 
-    auto_ptr<path_t> pp(new path_t(NONE, 0, NONE));
-
-    for (int n = 0; n < p.N; ++n) {
-
-    
-        path_t& tmp = *pp.get();
-        tmp.orig = NONE;
-        tmp.start = n;
-        tmp.finish = NONE;
-        get_best_path(p, tmp); 
-
-
-        // output the result
-        if (tmp.finish == NONE)
-            tmp.finish = 0;
-        cout << (tmp.finish + 1) << " ";
-    }
 
     cout << endl;
 }
@@ -215,6 +115,17 @@ int main(int argc, const char* argv[]) {
 
 
     solve(p);
+
+
+    key_t k;
+    init_key(k);
+    int idx = KEY_SIZE-1;
+    k[idx--] = 'm';
+    k[idx--] = 'a';
+    k[idx--] = 'x';
+
+    char* b = upper_bound(&k[0], &k[KEY_SIZE], char(0));
+    cout << *b << "; " << *(b-1) << endl;
 
 
     return 0;
