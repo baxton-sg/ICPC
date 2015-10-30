@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <memory>
 
 
 using namespace std;
@@ -134,7 +135,8 @@ void get_best_path(params& p, path_t& start_point) {
     char best_c = NONE;
     
     for (int e = 0; e < best_edges.size(); ++e) { 
-        path_t tmp(n, best_edges[e]->end, NONE);
+        auto_ptr<path_t> pp (new path_t(n, best_edges[e]->end, NONE));
+        path_t& tmp = *pp.get();
         get_best_path(p, tmp); 
 
         // remember what I've just found
@@ -161,40 +163,16 @@ void get_best_path(params& p, path_t& start_point) {
 void solve(params& p) {
 
     for (int n = 0; n < p.N; ++n) {
-        vector<edge_t*> best_edges;
 
-        for (int e = 0; e < p.edges[n].size(); ++e) {
-            edge_t& edge = p.edges[n][e];
-            if (!best_edges.size()) {
-                best_edges.push_back(&edge);
-            }
-            else if (best_edges[0]->c == edge.c) {
-                best_edges.push_back(&edge);
-            }
-            else if (best_edges[0]->c < edge.c) {
-                best_edges.clear();
-                best_edges.push_back(&edge);
-            }
-        }
-
-        path_t best_path(NONE, NONE, NONE);
     
-        for (int e = 0; e < best_edges.size(); ++e) { 
-            path_t tmp(n, best_edges[e]->end, NONE);
-            get_best_path(p, tmp); 
+        path_t tmp(NONE, n, NONE);
+        get_best_path(p, tmp); 
 
-            // remember what I've just found
-            p.pathes[best_edges[e]->end].push_back(tmp);
-
-            if (best_path.finish == NONE || 0 > cmp_path(best_path, tmp)) {
-                best_path = tmp;
-            }
-        } 
 
         // output the result
-        if (best_path.finish == NONE)
-            best_path.finish = 0;
-        cout << (best_path.finish + 1) << " ";
+        if (tmp.finish == NONE)
+            tmp.finish = 0;
+        cout << (tmp.finish + 1) << " ";
     }
 
     cout << endl;
@@ -203,7 +181,8 @@ void solve(params& p) {
 
 int main(int argc, const char* argv[]) {
 
-    params p;
+    auto_ptr<params> pp(new params);
+    params& p = *pp.get();
 
     cin >> p.N;
 
