@@ -10,58 +10,345 @@
 using namespace std;
 
 
-struct edge_t {
-    int end;
-    char c;
-
-    edge_t(int e, char ch) :
-        end(e),
-        c(ch)
-    {}
-};
-
-
-struct path_t {
-    int orig;
-    int start;
-    int dir;
-    int finish;
-    vector<char> path;
-
-    path_t(int o, int s, int f, int d) :
-        orig(o),
-        start(s),
-        dir(d),
-        finish(f),
-        path()
-    {
-        path.reserve(20000);
-    }
-};
-
-
 const int NONE = -1;
 
 
 
-struct params {
-    int N;
-    vector<vector<edge_t> > edges;
 
-    vector<vector<path_t> > pathes;
+////////////////////////////////////////////////////
+// KEY
+
+const int MAX_DIG = 90;
+const int TOP_DIG = MAX_DIG + 1;
+
+
+
+// actually a number of previous characters, not a digit simbol
+inline
+bool is_digit(char c) {
+    return 0 <= c && c <= MAX_DIG;
+}
+
+
+// key's format: <letter>[<num>]
+//    "aa3b12de"
+//    "aaaaa" or "a5"
+template<typename It>
+int cmp_key(It beg1, It end1, It beg2, It end2) {
+    size_t s1 = end1 - beg1;
+    size_t s2 = end2 - beg2;
+
+    if (!s1 && !s2)
+        return 0;
+    else if (!s1)
+        return -1;
+    else if (!s2)
+        return 1;
+
+
+    char c1 = *beg1;
+    char c2 = *beg2;
+
+    It tmp1 = beg1; ++tmp1;
+    It tmp2 = beg2; ++tmp2;
+        
+    char n1 = tmp1 != end1 ? (is_digit(*tmp1) ? *(++beg1) : 1) : 1;
+    char n2 = tmp2 != end2 ? (is_digit(*tmp2) ? *(++beg2) : 1) : 1;
+
+
+    while (beg1 != end1 && beg2 != end2) {
+
+        if (c1 > c2) 
+            return 1;
+        else if (c1 < c2)
+            return -1;
+
+        if (n1 < n2) {
+            n2 -= n1;
+            n1 = 0;
+        }
+        else {
+            n1 -= n2;
+            n2 = 0;
+        }
+
+        if (!n1) {
+            ++beg1;
+            if (beg1 != end1) {
+                c1 = *beg1;
+                tmp1 = beg1; ++tmp1;
+                n1 = tmp1 != end1 ? (is_digit(*tmp1) ? *(++beg1) : 1) : 1;
+            }
+        }
+        if (!n2) {
+            ++beg2;
+            if (beg2 != end2) {
+                c2 = *beg2; 
+                tmp2 = beg2; ++tmp2;
+                n2 = tmp2 != end2 ? (is_digit(*tmp2) ? *(++beg2) : 1) : 1;
+            }
+        }
+
+    }
+
+    if (!n1 && !n2)
+        return 0;
+    else if (!n1)
+        return -1;
+    return 1;
+}
+
+
+class key_t {
+public:
+    typedef unsigned char CHAR;
+    typedef vector<CHAR>::iterator iterator;
+
+private:
+    vector<CHAR> storage;
+
+public:
+    
+    iterator begin() { return storage.begin(); }
+    iterator end() { return storage.end(); }
+
+    size_t size() const {return storage.size();}
+
+    void push_back(CHAR c) { 
+        size_t s = size();
+
+
+        if (is_digit(c)) {
+            if (is_digit(storage[s-1])) {
+                if (TOP_DIG > int(storage[s-1]) + c - 1) {
+                    storage[s-1] += c - 1;
+                }
+                else {
+                    storage.push_back(storage[s-2]);
+                    char v = int(storage[s-1]) + c - 1 - MAX_DIG;
+                    storage[s-1] = MAX_DIG;
+                    if (1 < v)
+                        storage.push_back(v);
+                }
+            }
+            else {
+                storage.push_back(c);
+            }
+        }
+        else if (2 <= s) {
+            if (is_digit(storage[s-1])) {
+                if (storage[s-2] == c) {
+                    if (TOP_DIG > int(storage[s-1]) + 1) {
+                        ++storage[s-1];
+                    }
+                    else {
+                        //storage[s-1] = MAX_DIG;
+                        storage.push_back(storage[s-2]);
+                    }
+                }
+                else 
+                    storage.push_back(c);
+            }
+            else if (storage[s-1] == c) {
+                storage.push_back((char)2);
+            }
+            else
+                storage.push_back(c);
+        }
+	else if (1 == s && storage[s-1] == c) {
+            storage.push_back((char)2);
+        }
+        else {
+            storage.push_back(c);
+        } 
+    }
+
+    template<typename T>
+    void append(T&& other) {
+        size_t new_size = storage.size() + other.size();
+        if (new_size > storage.capacity())
+            storage.reserve(new_size * 2);
+
+        storage.insert(storage.end(), other.begin(), other.end());
+    }
+
+    template<typename T>
+    void append_push(T&& other) {
+        size_t new_size = storage.size() + other.size();
+        if (new_size > storage.capacity())
+            storage.reserve(new_size * 2);
+
+        if (2 <= other.size()) {
+            typename remove_reference<T>::type::iterator it = other.begin();
+            push_back(*(it++));
+            push_back(*(it++));
+
+            storage.insert(storage.end(), it, other.end());
+        }
+        else {
+            for (typename remove_reference<T>::type::iterator it = other.begin(); it != other.end(); ++it)
+                push_back(*it);
+        }
+    }
+        
+
+    friend key_t make_key(const char* s); 
+
+
+    ostream& print(ostream& os) const {
+        for (int i = 0; i < storage.size(); ++i)
+            os << (char)(is_digit(storage[i]) ? storage[i] + '0' : storage[i]);
+        return os;
+    }
+};
+
+ostream& operator<< (ostream& os, const key_t& key) {
+    return key.print(os);
+}
+
+
+key_t make_key(const char* s) {
+    key_t key;
+    unsigned char dig = 0;
+
+    while (*s) {
+        if ('0' <= *s && *s <= '9')
+            dig = dig * 10 + *s - '0';
+            //key.storage.push_back(*s - '0');
+        else {
+            if (dig != 0) {
+                key.storage.push_back(dig);
+                dig = 0;
+            }
+            key.storage.push_back(*s);
+        }
+        ++s;
+    }
+
+    if (dig != 0) 
+        key.storage.push_back(dig);
+
+    return key;
+}
+
+
+
+
+// END OF KEY
+////////////////////////////////////////////////////
+
+
+
+
+////////////////////////////////////////////////////
+// EDGE
+
+
+struct edge_t {
+    int end;
+    char c;
 };
 
 
+// END OF EDGE
+////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////
+// PATH
+
+struct path_t {
+    int dir;
+    int finish;
+    key_t key;
+};
+
+int cmp_path(path_t& p1, path_t& p2) {
+    int ret = cmp_key(p1.key.begin(), p1.key.end(), p2.key.begin(), p2.key.end());
+
+    if (0 == ret) {
+        return p1.finish - p2.finish;
+    }
+
+    return ret;
+}
+
+// END OF PATH
+////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////
+// NODE
+
+struct node_t {
+
+    typedef vector<path_t>::iterator path_iterator;
+
+    vector<path_t> pathes;
+
+    vector<edge_t> edges_hi;
+    vector<edge_t> edges_lo;
+
+    int skept_dir;
+
+    node_t() :
+        pathes(),
+        edges_hi(),
+        edges_lo(),
+        skept_dir(NONE)
+    {}
+
+
+    void add_edge(edge_t&& e) {
+        if (0 == edges_hi.size()) {
+            edges_hi.push_back(e);
+        }
+        else if (edges_hi[0].c == e.c) {
+            edges_hi.push_back(e);
+        }
+        else if (edges_hi[0].c < e.c) {
+            edges_lo.assign(edges_hi.begin(), edges_hi.end());
+            edges_hi.push_back(e);
+        }
+        else {
+            if (0 == edges_lo.size()) {
+                edges_lo.push_back(e);
+            }
+            else if (edges_lo[0].c == e.c) {
+                edges_lo.push_back(e);
+            }
+            else if (edges_lo[0].c < e.c) {
+                edges_lo.clear();
+                edges_lo.push_back(e);
+            }
+            // else - just forget the edge
+        }
+    }
+
+    void purge_edges() {
+        if (1 < edges_hi.size()) {
+            edges_lo.clear();
+        }
+    }
+};
+
+// END OF NODE
+////////////////////////////////////////////////////
+
+
+
+
+
+////////////////////////////////////////////////////
+// PARAMS
+
+struct params {
+    int N;
+    vector<node_t> nodes;
+};
+
 void init_params(params& p) {
-    vector<edge_t> tmp_edge;
-    vector<path_t> tmp_path;
-
-    tmp_edge.reserve(1000);
-    tmp_path.reserve(20000);
-
  
-    p.edges.assign(p.N, tmp_edge);
-    p.pathes.assign(p.N, tmp_path);
+    p.nodes.assign(p.N, node_t());
 
 }
 
@@ -69,158 +356,80 @@ void init_params(params& p) {
 void add_edge(params& p, int a, int b, char c) {
     --a;
     --b;
-    p.edges[a].push_back(edge_t(b, c));
-    p.edges[b].push_back(edge_t(a, c));
+    p.nodes[a].add_edge(edge_t{b, c});
+    p.nodes[b].add_edge(edge_t{a, c});
+}
+
+// END OF PARAMS
+////////////////////////////////////////////////////
+
+
+
+
+void get_best_path(params& p, int prev_idx, int node_idx, path_t& path) {
+
 }
 
 
-path_t* get_from_memo(params& p, int orig, int node) {
 
-    // 1 or 2 pathes always!!!
-    if (0 < p.pathes[node].size()) {
-        if (p.pathes[node][0].dir != orig)
-            return &p.pathes[node][0];
-        else if (1 < p.pathes[node].size())
-            return &p.pathes[node][1];
+
+int get_destination(params& p, int prev_idx, int node_idx, path_t* ret_path=NULL) {
+    node_t& node = p.nodes[node_idx];
+
+
+    // check if it's leaf
+    if (1 == node.edges_hi.size() && node.edges_hi[0].end == prev_idx) {
+        return node_idx;
     }
 
 
-    return NULL;
-}
-
-
-int cmp_path(const path_t& p1, const path_t& p2) {
-    int size1 = p1.path.size();
-    int size2 = p2.path.size();
-
-    int i1 = 0;
-    int i2 = 0;
-
-    while (i1 < size1 && i2 < size2) {
-        if (p1.path[i1] > p2.path[i2])
-            return 1;
-        else if (p1.path[i1] < p2.path[i2])
-            return -1;
-        ++i1;
-        ++i2;
-    }
-
-    if (i1 < size1)
-        return 1;
-
-    else if (i2 < size2)
-        return -1;
-
-    return p1.finish - p2.finish;
-}
-
-
-void get_best_path(params& p, path_t& start_point) {
-    int n = start_point.start;
-
-    // try memo
-    path_t* path_memo = get_from_memo(p, start_point.orig, n);
-
-
-
-    if (NULL != path_memo && (start_point.orig == path_memo->orig || 2 == p.pathes[n].size())) {
-        start_point = *path_memo;
-        return;
-    }
-    
-    vector<edge_t*> best_edges;
-
-    for (int e = 0; e < p.edges[n].size(); ++e) {
-        edge_t& edge = p.edges[n][e];
-
-        if (start_point.orig == edge.end)
+    // node has children
+    for (int e = 0; e < node.edges_hi.size(); ++e) {
+        if (prev_idx == node.edges_hi[e].end) {
+            node.skept_dir = prev_idx;
             continue;
+        }
 
-        if (!best_edges.size()) {
-            best_edges.push_back(&edge);
-        }
-        else if (best_edges[0]->c == edge.c) {
-            best_edges.push_back(&edge);
-        }
-        else if (best_edges[0]->c < edge.c) {
-            best_edges.clear();
-            best_edges.push_back(&edge);
-        }
-    }
+        path_t next_path;
+        get_best_path(p, node_idx, node.edges_hi[e].end, next_path);
 
-/*
-    if (NULL != path_memo) {
-        if (0 < best_edges.size()) {
-            if (best_edges[0]->end == path_memo->dir) { 
-                start_point = *path_memo;
-                return;
+
+        path_t cur_path;
+        cur_path.dir = node.edges_hi[e].end;
+        cur_path.finish = next_path.finish;
+        cur_path.key.push_back(node.edges_hi[e].c);
+        cur_path.key.append_push(next_path.key);
+
+
+        if (0 == node.pathes.size()) {
+            node.pathes.push_back(move(cur_path));
+        }
+        else {
+            if (0 < cmp_path(cur_path, node.pathes[0])) {
+                node.pathes.insert(node.pathes.begin(), move(cur_path));
+            }
+            else {
+                node.pathes.push_back(move(cur_path));
             }
         }
-	else { 
-//            start_point = *path_memo;
-//            return;
+    }
+
+    if (NONE != node.skept_dir) {
+        for (int e = 0; e < node.edges_lo.size(); ++e) {
+            if (prev_idx == node.edges_lo[e].end) {
+                node.skept_dir = prev_idx;
+                continue;
+            }
+
         }
     }
-*/
-
-
-    path_t best_path(NONE, NONE, NONE, NONE);
-    char best_c = NONE;
-
-    
-    for (int e = 0; e < best_edges.size(); ++e) { 
-        if (path_memo && path_memo->dir == best_edges[e]->end)
-            continue;
-
-        path_t tmp(n, best_edges[e]->end, NONE, NONE);
-
-        get_best_path(p, tmp); 
-
-        if (best_path.finish == NONE || 0 > cmp_path(best_path, tmp)) {
-            best_path = tmp;
-            best_c = best_edges[e]->c;
-        }
-
-        tmp.path.clear();
-    } 
-
-    if (best_path.finish == NONE)
-        if (path_memo)
-            start_point = *path_memo;
-        else
-            start_point.finish = n;
     else {
-        if (0 == p.pathes[best_path.start].size())
-            p.pathes[best_path.start].push_back(best_path);
-        else if (1 == p.pathes[best_path.start].size() && best_path.orig != p.pathes[best_path.start][0].orig) {
-            if (0 > cmp_path(p.pathes[best_path.start][0], best_path)) {
-                p.pathes[best_path.start].push_back(p.pathes[best_path.start][0]);
-                p.pathes[best_path.start][0] = best_path;
-            }
-            else {
-                p.pathes[best_path.start].push_back(best_path);
-            }
-        }
-
-        start_point.path.push_back(best_c);
-        start_point.path.insert(start_point.path.end(), best_path.path.begin(), best_path.path.end());
-        start_point.finish = best_path.finish;
-        start_point.dir = best_path.start;
-
-        if (path_memo) {
-            if (0 > cmp_path(*path_memo, start_point)) {
-                p.pathes[n].push_back(*path_memo);
-                p.pathes[n][0] = start_point;
-            }
-            else {
-                p.pathes[n].push_back(start_point);
-                start_point = *path_memo;
-            }
-        }
+        node_t::path_iterator second = node.pathes.begin(); ++second;
+        node.pathes.erase(second, node.pathes.end());
     }
 
+    return node.pathes[0].finish;
 }
-
 
 
 void solve(params& p) {
@@ -229,25 +438,11 @@ void solve(params& p) {
     buffer.reserve(p.N * 5);
     stringstream ss(buffer);
 
-    auto_ptr<path_t> pp(new path_t(NONE, 0, NONE, NONE));
 
-    for (int n = 0; n < p.N; ++n) {
-
-    
-        path_t& tmp = *pp.get();
-        tmp.orig = NONE;
-        tmp.start = n;
-        tmp.finish = NONE;
-        tmp.dir = NONE;
-        get_best_path(p, tmp); 
-
-
-        // output the result
-        if (tmp.finish == NONE)
-            tmp.finish = 0;
-        ss << (tmp.finish + 1) << " ";
-
+    for (int i = 0; i < p.N; ++i) {
+        ss << get_destination(p, NONE, i) << " ";
     }
+
 
     cout << ss.str() << endl;
 }
@@ -267,6 +462,11 @@ int main(int argc, const char* argv[]) {
         char c;
         cin >> a >> b >> c;
         add_edge(p, a, b, c);
+    }
+
+    // release some memory if possible
+    for (int i = 0; i < p.N; ++i) {
+        p.nodes[i].purge_edges();
     }
 
 
