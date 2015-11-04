@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <list>
 #include <memory>
 #include <sstream>
 
@@ -17,6 +18,9 @@ const int NONE = -1;
 
 ////////////////////////////////////////////////////
 // KEY
+
+namespace hr_key {
+
 
 const int MAX_DIG = 90;
 const int TOP_DIG = MAX_DIG + 1;
@@ -155,7 +159,7 @@ public:
             else
                 storage.push_back(c);
         }
-	else if (1 == s && storage[s-1] == c) {
+    else if (1 == s && storage[s-1] == c) {
             storage.push_back((char)2);
         }
         else {
@@ -232,7 +236,7 @@ key_t make_key(const char* s) {
 }
 
 
-
+}
 
 // END OF KEY
 ////////////////////////////////////////////////////
@@ -259,11 +263,11 @@ struct edge_t {
 struct path_t {
     int dir;
     int finish;
-    key_t key;
+    hr_key::key_t key;
 };
 
 int cmp_path(path_t& p1, path_t& p2) {
-    int ret = cmp_key(p1.key.begin(), p1.key.end(), p2.key.begin(), p2.key.end());
+    int ret = hr_key::cmp_key(p1.key.begin(), p1.key.end(), p2.key.begin(), p2.key.end());
 
     if (0 == ret) {
         return p1.finish - p2.finish;
@@ -281,20 +285,21 @@ int cmp_path(path_t& p1, path_t& p2) {
 
 struct node_t {
 
+    typedef list<edge_t> edge_container;
+    typedef edge_container::iterator edge_iterator;   
+
     typedef vector<path_t>::iterator path_iterator;
 
     vector<path_t> pathes;
 
-    vector<edge_t> edges_hi;
-    vector<edge_t> edges_lo;
+    edge_container edges_hi;
+    edge_container edges_lo;
 
-    int skept_dir;
 
     node_t() :
         pathes(),
         edges_hi(),
-        edges_lo(),
-        skept_dir(NONE)
+        edges_lo()
     {}
 
 
@@ -302,10 +307,10 @@ struct node_t {
         if (0 == edges_hi.size()) {
             edges_hi.push_back(e);
         }
-        else if (edges_hi[0].c == e.c) {
+        else if (edges_hi.front().c == e.c) {
             edges_hi.push_back(e);
         }
-        else if (edges_hi[0].c < e.c) {
+        else if (edges_hi.front().c < e.c) {
             edges_lo.assign(edges_hi.begin(), edges_hi.end());
             edges_hi.push_back(e);
         }
@@ -313,10 +318,10 @@ struct node_t {
             if (0 == edges_lo.size()) {
                 edges_lo.push_back(e);
             }
-            else if (edges_lo[0].c == e.c) {
+            else if (edges_lo.front().c == e.c) {
                 edges_lo.push_back(e);
             }
-            else if (edges_lo[0].c < e.c) {
+            else if (edges_lo.front().c < e.c) {
                 edges_lo.clear();
                 edges_lo.push_back(e);
             }
@@ -378,26 +383,31 @@ int get_destination(params& p, int prev_idx, int node_idx, path_t* ret_path=NULL
 
 
     // check if it's leaf
-    if (1 == node.edges_hi.size() && node.edges_hi[0].end == prev_idx) {
+    // 1) just 1 edge
+    // 2) the one edge goes in backward direction
+    if (1 == node.edges_hi.size() && node.edges_hi.front().end == prev_idx) {
+        if (ret_path) {
+            ret_path->finish = node_idx;
+        }
         return node_idx;
     }
 
 
     // node has children
-    for (int e = 0; e < node.edges_hi.size(); ++e) {
-        if (prev_idx == node.edges_hi[e].end) {
-            node.skept_dir = prev_idx;
+    for (node_t::edge_iterator e = node.edges_hi.begin(); e != node.edges_hi.end(); ) {
+        if (prev_idx == e->end) {
+            ++e;
             continue;
         }
 
         path_t next_path;
-        get_best_path(p, node_idx, node.edges_hi[e].end, next_path);
+        get_best_path(p, node_idx, e->end, next_path);
 
 
         path_t cur_path;
-        cur_path.dir = node.edges_hi[e].end;
+        cur_path.dir = e->end;
         cur_path.finish = next_path.finish;
-        cur_path.key.push_back(node.edges_hi[e].c);
+        cur_path.key.push_back(e->c);
         cur_path.key.append_push(next_path.key);
 
 
@@ -412,20 +422,21 @@ int get_destination(params& p, int prev_idx, int node_idx, path_t* ret_path=NULL
                 node.pathes.push_back(move(cur_path));
             }
         }
+
+        node.edges_hi.erase(e++);
     }
 
-    if (NONE != node.skept_dir) {
-        for (int e = 0; e < node.edges_lo.size(); ++e) {
-            if (prev_idx == node.edges_lo[e].end) {
-                node.skept_dir = prev_idx;
+    if (1 == node.edges_hi.size()) {
+        for (node_t::edge_iterator e = node.edges_lo.begin(); e != node.edges_lo.end(); ) {
+            if (prev_idx == e->end) {
+                ++e;
                 continue;
             }
 
+            node.edges_lo.erase(e++);
         }
     }
     else {
-        node_t::path_iterator second = node.pathes.begin(); ++second;
-        node.pathes.erase(second, node.pathes.end());
     }
 
     return node.pathes[0].finish;
