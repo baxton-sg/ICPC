@@ -371,9 +371,6 @@ void add_edge(params& p, int a, int b, char c) {
 
 
 
-void get_best_path(params& p, int prev_idx, int node_idx, path_t& path) {
-
-}
 
 
 
@@ -381,63 +378,278 @@ void get_best_path(params& p, int prev_idx, int node_idx, path_t& path) {
 int get_destination(params& p, int prev_idx, int node_idx, path_t* ret_path=NULL) {
     node_t& node = p.nodes[node_idx];
 
+    size_t pathes_num = node.pathes.size();
 
-    // check if it's leaf
-    // 1) just 1 edge
-    // 2) the one edge goes in backward direction
-    if (1 == node.edges_hi.size() && node.edges_hi.front().end == prev_idx) {
-        if (ret_path) {
-            ret_path->finish = node_idx;
-        }
-        return node_idx;
-    }
+    if (0 == pathes_num) {
+   
+        // check if it's leaf
+        if (1 == node.edges_hi.size() && 
+            0 == node.edges_lo.size() && 
+            node.edges_hi.front().end == prev_idx) {
 
-
-    // node has children
-    for (node_t::edge_iterator e = node.edges_hi.begin(); e != node.edges_hi.end(); ) {
-        if (prev_idx == e->end) {
-            ++e;
-            continue;
-        }
-
-        path_t next_path;
-        get_best_path(p, node_idx, e->end, next_path);
-
-
-        path_t cur_path;
-        cur_path.dir = e->end;
-        cur_path.finish = next_path.finish;
-        cur_path.key.push_back(e->c);
-        cur_path.key.append_push(next_path.key);
-
-
-        if (0 == node.pathes.size()) {
-            node.pathes.push_back(move(cur_path));
-        }
-        else {
-            if (0 < cmp_path(cur_path, node.pathes[0])) {
-                node.pathes.insert(node.pathes.begin(), move(cur_path));
+            if (ret_path) {
+                ret_path->finish = node_idx;
             }
-            else {
-                node.pathes.push_back(move(cur_path));
-            }
+
+            return node_idx;
         }
 
-        node.edges_hi.erase(e++);
-    }
 
-    if (1 == node.edges_hi.size()) {
-        for (node_t::edge_iterator e = node.edges_lo.begin(); e != node.edges_lo.end(); ) {
+        // node has children
+        for (node_t::edge_iterator e = node.edges_hi.begin(); e != node.edges_hi.end(); ) {
             if (prev_idx == e->end) {
                 ++e;
                 continue;
             }
 
-            node.edges_lo.erase(e++);
+            path_t next_path;
+            get_destination(p, node_idx, e->end, &next_path);
+
+
+            path_t cur_path;
+            cur_path.dir = e->end;
+            cur_path.finish = next_path.finish;
+            cur_path.key.push_back(e->c);
+            cur_path.key.append_push(next_path.key);
+
+
+            if (0 == pathes_num) {
+                node.pathes.push_back(move(cur_path));
+                ++pathes_num;
+            }
+            else {
+                if (0 < cmp_path(cur_path, node.pathes[0])) {
+                    node.pathes.insert(node.pathes.begin(), move(cur_path));
+                    ++pathes_num;
+
+                    if (2 < pathes_num) {
+                        node.pathes.pop_back();
+                        --pathes_num;
+                    }
+                }
+                else {
+                    if (1 == pathes_num) {
+                        node.pathes.push_back(move(cur_path));
+                        ++pathes_num;
+                    }
+                    else if (2 == pathes_num && 0 < cmp_path(cur_path, node.pathes[1])) {
+                        node.pathes[1] = move(cur_path);
+                    }
+                }
+            }
+
+            // finally I can delete this edge as processed
+            node.edges_hi.erase(e++);
+        }
+
+        if (1 == node.edges_hi.size()) {
+            for (node_t::edge_iterator e = node.edges_lo.begin(); e != node.edges_lo.end(); ) {
+
+                path_t next_path;
+                get_destination(p, node_idx, e->end, &next_path);
+
+
+                path_t cur_path;
+                cur_path.dir = e->end;
+                cur_path.finish = next_path.finish;
+                cur_path.key.push_back(e->c);
+                cur_path.key.append_push(next_path.key);
+
+
+                if (0 == pathes_num) {
+                    node.pathes.push_back(move(cur_path));
+                    ++pathes_num;
+                }
+                else {
+                    if (0 < cmp_path(cur_path, node.pathes[0])) {
+                        node.pathes.insert(node.pathes.begin(), move(cur_path));
+                        ++pathes_num;
+
+                        if (2 < pathes_num) {
+                            node.pathes.pop_back();
+                            --pathes_num;
+                        }
+                    }
+                    else {
+                        if (1 == pathes_num) {
+                            node.pathes.push_back(move(cur_path));
+                            ++pathes_num;
+                        }
+                        else if (2 == pathes_num && 0 < cmp_path(cur_path, node.pathes[1])) {
+                            node.pathes[1] = move(cur_path);
+                        }
+                    }
+                }
+
+                node.edges_lo.erase(e++);
+            }
+        }
+
+    }
+    else if (1 == pathes_num) {
+        // leaf
+        if (0 == node.edges_hi.size() && 0 == node.edges_lo.size()) {
+            if (node.pathes[0].dir == prev_idx) {
+                if (ret_path) {
+                    ret_path->finish = node_idx;
+                }
+
+                return node_idx;
+            }
+        }
+        else if (1 == node.edges_hi.size()) {
+            node_t::edge_iterator e = node.edges_hi.begin();
+
+            if (prev_idx != e->end) {
+
+                path_t next_path;
+                get_destination(p, node_idx, e->end, &next_path);
+
+                path_t cur_path;
+                cur_path.dir = e->end;
+                cur_path.finish = next_path.finish;
+                cur_path.key.push_back(e->c);
+                cur_path.key.append_push(next_path.key);
+
+                if (0 < cmp_path(cur_path, node.pathes[0])) {
+                    node.pathes.insert(node.pathes.begin(), move(cur_path));
+                }
+                else {
+                    node.pathes.push_back(move(cur_path));
+                }
+
+                ++pathes_num;
+
+                node.edges_hi.erase(e++);
+            }
+        }
+        else if (0 < node.edges_lo.size()) {
+            for (node_t::edge_iterator e = node.edges_lo.begin(); e != node.edges_lo.end(); ) {
+                if (prev_idx == e->end)
+                    continue;
+
+                path_t next_path;
+                get_destination(p, node_idx, e->end, &next_path);
+
+
+                path_t cur_path;
+                cur_path.dir = e->end;
+                cur_path.finish = next_path.finish;
+                cur_path.key.push_back(e->c);
+                cur_path.key.append_push(next_path.key);
+
+
+                if (0 == pathes_num) {
+                    node.pathes.push_back(move(cur_path));
+                    ++pathes_num;
+                }
+                else {
+                    if (0 < cmp_path(cur_path, node.pathes[0])) {
+                        node.pathes.insert(node.pathes.begin(), move(cur_path));
+                        ++pathes_num;
+
+                        if (2 < pathes_num) {
+                            node.pathes.pop_back();
+                            --pathes_num;
+                        }
+                    }
+                    else {
+                        if (1 == pathes_num) {
+                            node.pathes.push_back(move(cur_path));
+                            ++pathes_num;
+                        }
+                        else if (2 == pathes_num && 0 < cmp_path(cur_path, node.pathes[1])) {
+                            node.pathes[1] = move(cur_path);
+                        }
+                    }
+                }
+
+                node.edges_lo.erase(e++);
+            }
         }
     }
-    else {
+    else { // 2 pathes
+        if (1 == node.edges_hi.size()) {
+            node_t::edge_iterator e = node.edges_hi.begin();
+
+            if (prev_idx != e->end) {
+
+                path_t next_path;
+                get_destination(p, node_idx, e->end, &next_path);
+
+                path_t cur_path;
+                cur_path.dir = e->end;
+                cur_path.finish = next_path.finish;
+                cur_path.key.push_back(e->c);
+                cur_path.key.append_push(next_path.key);
+
+                if (0 < cmp_path(cur_path, node.pathes[0])) {
+                    node.pathes.insert(node.pathes.begin(), move(cur_path));
+                    ++pathes_num;
+
+                    if (2 < pathes_num) {
+                        node.pathes.pop_back();
+                        --pathes_num;
+                    }
+                }
+                else {
+                    if (0 < cmp_path(cur_path, node.pathes[1])) {
+                        node.pathes[1] = move(cur_path);
+                    }
+                }
+
+                ++pathes_num;
+
+                node.edges_hi.erase(e++);
+            }
+        }
+        else if (1 == node.edges_lo.size()) {
+            node_t::edge_iterator e = node.edges_lo.begin();
+
+            if (prev_idx != e->end) {
+
+                path_t next_path;
+                get_destination(p, node_idx, e->end, &next_path);
+
+                path_t cur_path;
+                cur_path.dir = e->end;
+                cur_path.finish = next_path.finish;
+                cur_path.key.push_back(e->c);
+                cur_path.key.append_push(next_path.key);
+
+                if (0 < cmp_path(cur_path, node.pathes[0])) {
+                    node.pathes.insert(node.pathes.begin(), move(cur_path));
+                    ++pathes_num;
+
+                    if (2 < pathes_num) {
+                        node.pathes.pop_back();
+                        --pathes_num;
+                    }
+                }
+                else {
+                    if (0 < cmp_path(cur_path, node.pathes[1])) {
+                        node.pathes[1] = move(cur_path);
+                    }
+                }
+
+                ++pathes_num;
+
+                node.edges_hi.erase(e++);
+            }
+        }
     }
+
+    if (2 == pathes_num) {
+        if (prev_idx == node.pathes[0].dir) {
+            if (ret_path) { 
+                *ret_path = node.pathes[1];
+            }
+            return node.pathes[1].finish;
+        }
+    }
+
+    if (ret_path)
+        *ret_path = node.pathes[0]; 
 
     return node.pathes[0].finish;
 }
@@ -451,7 +663,7 @@ void solve(params& p) {
 
 
     for (int i = 0; i < p.N; ++i) {
-        ss << get_destination(p, NONE, i) << " ";
+        ss << (1 + get_destination(p, NONE, i)) << " ";
     }
 
 
@@ -486,3 +698,4 @@ int main(int argc, const char* argv[]) {
 
     return 0;
 }
+
