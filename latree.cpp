@@ -312,6 +312,7 @@ struct node_t {
         }
         else if (edges_hi.front().c < e.c) {
             edges_lo.assign(edges_hi.begin(), edges_hi.end());
+            edges_hi.clear();
             edges_hi.push_back(e);
         }
         else {
@@ -491,6 +492,7 @@ int get_destination(params& p, int prev_idx, int node_idx, path_t* ret_path=NULL
         if (0 == node.edges_hi.size() && 0 == node.edges_lo.size()) {
             if (node.pathes[0].dir == prev_idx) {
                 if (ret_path) {
+                    ret_path->dir = NONE;
                     ret_path->finish = node_idx;
                 }
 
@@ -520,13 +522,15 @@ int get_destination(params& p, int prev_idx, int node_idx, path_t* ret_path=NULL
 
                 ++pathes_num;
 
-                node.edges_hi.erase(e++);
+                node.edges_hi.erase(e);
             }
         }
         else if (0 < node.edges_lo.size()) {
             for (node_t::edge_iterator e = node.edges_lo.begin(); e != node.edges_lo.end(); ) {
-                if (prev_idx == e->end)
+                if (prev_idx == e->end) {
+                    ++e;
                     continue;
+                }
 
                 path_t next_path;
                 get_destination(p, node_idx, e->end, &next_path);
@@ -600,7 +604,7 @@ int get_destination(params& p, int prev_idx, int node_idx, path_t* ret_path=NULL
 
                 ++pathes_num;
 
-                node.edges_hi.erase(e++);
+                node.edges_hi.erase(e);
             }
         }
         else if (1 == node.edges_lo.size()) {
@@ -634,7 +638,7 @@ int get_destination(params& p, int prev_idx, int node_idx, path_t* ret_path=NULL
 
                 ++pathes_num;
 
-                node.edges_hi.erase(e++);
+                node.edges_hi.erase(e);
             }
         }
     }
